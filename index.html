@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>营销活动数据分析平台 V2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+
+        .upload-box {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-box:hover {
+            background: #f8f9ff;
+            border-color: #764ba2;
+        }
+
+        .upload-box h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .upload-box p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .file-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #2e7d32;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 6px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px;
+            border-radius: 10px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .analysis-section {
+            display: none;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .analysis-section.show {
+            display: block;
+        }
+
+        .result-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background: #f8f9ff;
+        }
+
+        /* 智能问答样式 */
+        .qa-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .qa-section.show {
+            display: block;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .qa-examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .example-tag {
+            padding: 8px 15px;
+            background: #f0f0f0;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .example-tag:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .qa-result {
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            display: none;
+        }
+
+        .qa-result.show {
+            display: block;
+        }
+
+        .qa-result h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .qa-answer {
+            color: #555;
+            line-height: 1.8;
+        }
+
+        .qa-data {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 营销活动数据分析平台</h1>
+            <p style="color: #666; margin-top: 10px;">分别上传两类数据，获取专业的营销分析报告</p>
+        </div>
+
+        <div class="upload-section">
+            <h2 style="margin-bottom: 20px; color: #333;">📁 数据上传</h2>
+            
+            <div class="upload-grid">
+                <!-- 公司购买明细上传 -->
+                <div class="upload-box" onclick="document.getElementById('purchaseFile').click()">
+                    <div class="upload-icon">📋</div>
+                    <h3>公司购买明细</h3>
+                    <p>包含字段：活动名称、公司名称、产品名称、<br>合同订单金额、新购金额、新客户金额</p>
+                    <input type="file" id="purchaseFile" accept=".csv,.xlsx,.xls">
+                    <div id="purchaseInfo" class="file-info"></div>
+                </div>
+
+                <!-- 活动线索数据上传 -->
+                <div class="upload-box" onclick="document.getElementById('leadFile').click()">
+                    <div class="upload-icon">📊</div>
+                    <h3>活动线索数据</h3>
+                    <p>包含字段：活动名称、线索数、触达企业数、<br>转化率、订单金额、新购转化率</p>
+                    <input type="file" id="leadFile" accept=".csv,.xlsx,.xls">
+                    <div id="leadInfo" class="file-info"></div>
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <button class="btn" id="analyzeBtn" disabled>🚀 开始分析</button>
+            </div>
+
+            <div id="uploadStatus"></div>
+        </div>
+
+        <!-- 智能问答区域 -->
+        <div id="qaSection" class="qa-section">
+            <h2 style="margin-bottom: 20px;">🤖 智能问答</h2>
+            <p style="color: #666; margin-bottom: 20px;">基于已上传的数据，您可以用自然语言提问，系统会自动分析并回答</p>
+            
+            <div class="search-box">
+                <input type="text" id="qaInput" class="search-input" placeholder="例如：腾讯科技参加了哪些活动？新年营销峰会触达了哪些公司？哪些公司购买了企业版CRM？">
+                <button class="search-btn" id="qaBtn">🔍 提问</button>
+            </div>
+
+            <div class="qa-examples">
+                <span style="color: #666; font-size: 14px; margin-right: 10px;">💡 常见问题：</span>
+                <div class="example-tag" data-q="腾讯科技购买了哪些产品">腾讯科技购买了哪些产品？</div>
+                <div class="example-tag" data-q="企业版CRM被哪些公司购买">企业版CRM被哪些公司购买？</div>
+                <div class="example-tag" data-q="新年营销峰会有哪些公司购买">新年营销峰会有哪些公司购买？</div>
+                <div class="example-tag" data-q="新年营销峰会有哪些产品被购买">新年营销峰会有哪些产品被购买？</div>
+                <div class="example-tag" data-q="腾讯科技参加了哪些活动">腾讯科技参加了哪些活动？</div>
+                <div class="example-tag" data-q="哪个公司购买金额最高">哪个公司购买金额最高？</div>
+            </div>
+
+            <div id="qaResult" class="qa-result"></div>
+        </div>
+
+        <div id="analysisSection" class="analysis-section">
+            <h2 style="margin-bottom: 20px;">📈 分析结果</h2>
+            <div id="statsGrid" class="stats-grid"></div>
+            <div id="topResults"></div>
+            <div id="detailResults"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        let purchaseData = [];
+        let activityLeadData = [];
+        let companies = [];
+        let activities = [];
+        let products = [];
+
+        // 监听文件选择
+        document.getElementById('purchaseFile').addEventListener('change', (e) => {
+            handleFileUpload(e.target.files[0], 'purchase');
+        });
+
+        document.getElementById('leadFile').addEventListener('change', (e) => {
+            handleFileUpload(e.target.files[0], 'lead');
+        });
+
+        // 处理单个文件上传
+        function handleFileUpload(file, type) {
+            if (!file) return;
+
+            const reader = new FileReader();
+            const infoDiv = type === 'purchase' ? 'purchaseInfo' : 'leadInfo';
+
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                    console.log(`读取${type}文件:`, file.name, '数据条数:', jsonData.length);
+                    const fields = Object.keys(jsonData[0] || {});
+                    console.log('字段列表:', fields);
+                    console.log('字段JSON:', JSON.stringify(fields));
+                    console.log('第一行数据:', jsonData[0]);
+                    console.log('第一行JSON:', JSON.stringify(jsonData[0], null, 2));
+
+                    if (type === 'purchase') {
+                        purchaseData = jsonData;
+                        document.getElementById(infoDiv).innerHTML = `✅ 已上传: ${file.name}<br>数据条数: ${jsonData.length}`;
+                    } else {
+                        activityLeadData = jsonData;
+                        document.getElementById(infoDiv).innerHTML = `✅ 已上传: ${file.name}<br>数据条数: ${jsonData.length}`;
+                    }
+
+                    document.getElementById(infoDiv).classList.add('show');
+
+                    // 检查是否可以开始分析
+                    checkAnalyzeReady();
+
+                } catch (error) {
+                    console.error('文件读取失败:', error);
+                    document.getElementById(infoDiv).innerHTML = `❌ 读取失败: ${error.message}`;
+                    document.getElementById(infoDiv).style.background = '#ffebee';
+                    document.getElementById(infoDiv).style.color = '#c62828';
+                    document.getElementById(infoDiv).classList.add('show');
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 检查是否可以开始分析
+        function checkAnalyzeReady() {
+            const btn = document.getElementById('analyzeBtn');
+            if (purchaseData.length > 0 || activityLeadData.length > 0) {
+                btn.disabled = false;
+            }
+        }
+
+        // 开始分析
+        document.getElementById('analyzeBtn').addEventListener('click', () => {
+            console.log('开始分析...');
+            console.log('购买数据:', purchaseData.length, '条');
+            console.log('线索数据:', activityLeadData.length, '条');
+
+            try {
+                companies = analyzeCompanies();
+                activities = analyzeActivities();
+                products = analyzeProducts();
+
+                console.log('分析完成');
+                console.log('企业数:', companies.length);
+                console.log('活动数:', activities.length);
+                console.log('产品数:', products.length);
+
+                displayResults(companies, activities, products);
+
+                document.getElementById('uploadStatus').innerHTML = '<div class="status success">✅ 分析完成！请查看下方结果</div>';
+                document.getElementById('qaSection').classList.add('show');
+                document.getElementById('analysisSection').classList.add('show');
+                document.getElementById('qaSection').scrollIntoView({ behavior: 'smooth' });
+
+            } catch (error) {
+                console.error('分析失败:', error);
+                document.getElementById('uploadStatus').innerHTML = `<div class="status error">❌ 分析失败: ${error.message}</div>`;
+            }
+        });
+
+        // 分析企业数据
+        function analyzeCompanies() {
+            console.log('开始分析企业，购买数据条数:', purchaseData.length);
+            if (purchaseData.length > 0) {
+                const fields = Object.keys(purchaseData[0]);
+                console.log('==================');
+                console.log('购买数据字段名列表:');
+                fields.forEach((f, i) => console.log(`  [${i}] "${f}" (长度:${f.length})`));
+                console.log('==================');
+                console.log('第一条数据内容:', purchaseData[0]);
+            }
+            
+            const companyMap = new Map();
+            let foundCount = 0;
+
+            purchaseData.forEach((row, index) => {
+                // 获取所有字段，找到包含"公司"或"Company"的字段
+                const allFields = Object.keys(row);
+                let name = null;
+                
+                // 先尝试精确匹配（注意：实际数据中是"公司名"而不是"公司名称"）
+                name = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || 
+                       row['企业名称'] || row['客户名称'] || row['company'] || 
+                       row['客户'] || row['企业'];
+                
+                // 如果没找到，模糊匹配包含关键词的字段
+                if (!name) {
+                    for (let field of allFields) {
+                        const fieldLower = field.toLowerCase().trim();
+                        if (field.includes('公司') || fieldLower === 'company') {
+                            name = row[field];
+                            if (index === 0) console.log(`使用模糊匹配字段: "${field}" = "${name}"`);
+                            if (name) break;
+                        }
+                    }
+                }
+                
+                if (!name) {
+                    if (index < 3) {
+                        console.log(`第 ${index + 1} 行没有公司名称`);
+                        console.log('  可用字段:', allFields);
+                        console.log('  行数据:', row);
+                    }
+                    return;
+                }
+                
+                foundCount++;
+
+                if (!companyMap.has(name)) {
+                    companyMap.set(name, {
+                        name: name,
+                        totalAmount: 0,
+                        newAmount: 0,
+                        newCustomerAmount: 0,
+                        activities: new Set(),
+                        products: new Set(),
+                        purchaseCount: 0
+                    });
+                }
+
+                const company = companyMap.get(name);
+                
+                // 扩展金额字段匹配
+                const amountFields = ['合同订单金额/万元', '合同订单金额', '订单金额', '金额', 'amount', 'Amount'];
+                const newAmountFields = ['新购合同订单金额/万元', '新购合同订单金额', '新购金额', '新购订单金额'];
+                const newCustomerFields = ['新客户合同订单金额/万元', '新客户合同订单金额', '新客户金额', '新客户订单金额', '新客户合同订单金额'];
+                
+                let totalAmount = 0;
+                for (let field of amountFields) {
+                    if (row[field] !== undefined && row[field] !== null && row[field] !== '') {
+                        totalAmount = parseFloat(row[field]) || 0;
+                        break;
+                    }
+                }
+                
+                let newAmount = 0;
+                for (let field of newAmountFields) {
+                    if (row[field] !== undefined) {
+                        newAmount = parseFloat(row[field]) || 0;
+                        break;
+                    }
+                }
+                
+                let newCustomerAmount = 0;
+                for (let field of newCustomerFields) {
+                    if (row[field] !== undefined) {
+                        newCustomerAmount = parseFloat(row[field]) || 0;
+                        break;
+                    }
+                }
+                
+                company.totalAmount += totalAmount;
+                company.newAmount += newAmount;
+                company.newCustomerAmount += newCustomerAmount;
+                
+                // 活动字段匹配（支持"活动内容名称"）
+                const activity = row['活动内容名称'] || row['活动名称'] || row['Activity'] || row['活动'] || row['activity'];
+                // 产品字段匹配（注意：实际数据中是"产品子类"）
+                const product = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                
+                if (activity) company.activities.add(activity);
+                if (product) company.products.add(product);
+                company.purchaseCount += 1;
+            });
+
+            const result = Array.from(companyMap.values()).map(c => ({
+                ...c,
+                activities: Array.from(c.activities).filter(a => a),
+                products: Array.from(c.products).filter(p => p)
+            }));
+            
+            console.log(`找到 ${foundCount} 条有效公司数据，分析出 ${result.length} 个公司`);
+            if (result.length > 0) console.log('第一个公司:', result[0]);
+            return result;
+        }
+
+        // 分析活动数据
+        function analyzeActivities() {
+            console.log('开始分析活动，线索数据条数:', activityLeadData.length);
+            if (activityLeadData.length > 0) {
+                console.log('第一条线索数据字段:', Object.keys(activityLeadData[0]));
+                console.log('第一条线索数据内容:', activityLeadData[0]);
+            }
+            
+            const activityMap = new Map();
+            let foundCount = 0;
+
+            activityLeadData.forEach((row, index) => {
+                const name = row['活动内容名称'] || row['活动内容名称--分层'] || row['活动名称'] || row['Activity'] || row['活动'] || row['activity'];
+                if (!name) {
+                    if (index < 5) console.log(`第 ${index + 1} 行线索数据没有活动名称，字段:`, Object.keys(row));
+                    return;
+                }
+                
+                foundCount++;
+
+                activityMap.set(name, {
+                    name: name,
+                    leads: parseInt(row['线索数'] || row['线索数量'] || row['leads'] || 0),
+                    reachedCompanies: parseInt(row['触达企业数'] || row['合同订单企业数'] || row['触达公司数'] || row['reached'] || 0),
+                    conversion: parseFloat(String(row['合同订单转化率'] || row['商机或认证转化率'] || row['转化率'] || '0').replace('%', '')),
+                    amount: parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0),
+                    newConversion: parseFloat(String(row['新购合同订单转化率'] || row['新购转化率'] || '0').replace('%', '')),
+                    newCustomerAmount: parseFloat(row['新客户合同订单金额/万元'] || row['新客户合同订单金额'] || row['新客户金额'] || 0)
+                });
+            });
+
+            const result = Array.from(activityMap.values());
+            console.log(`找到 ${foundCount} 条有效活动数据，分析出 ${result.length} 个活动`);
+            if (result.length > 0) console.log('第一个活动:', result[0]);
+            return result;
+        }
+
+        // 分析产品数据
+        function analyzeProducts() {
+            console.log('开始分析产品，购买数据条数:', purchaseData.length);
+            
+            const productMap = new Map();
+            let foundCount = 0;
+
+            purchaseData.forEach((row, index) => {
+                const name = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                if (!name) {
+                    if (index < 5) console.log(`第 ${index + 1} 行没有产品名称，字段:`, Object.keys(row));
+                    return;
+                }
+                
+                foundCount++;
+
+                if (!productMap.has(name)) {
+                    productMap.set(name, {
+                        name: name,
+                        totalAmount: 0,
+                        newAmount: 0,
+                        purchaseCount: 0,
+                        companies: new Set()
+                    });
+                }
+
+                const product = productMap.get(name);
+                
+                // 金额字段匹配
+                const amountFields = ['合同订单金额/万元', '合同订单金额', '订单金额', '金额'];
+                const newAmountFields = ['新购合同订单金额/万元', '新购金额'];
+                
+                let totalAmount = 0;
+                for (let field of amountFields) {
+                    if (row[field] !== undefined && row[field] !== null && row[field] !== '') {
+                        totalAmount = parseFloat(row[field]) || 0;
+                        break;
+                    }
+                }
+                
+                let newAmount = 0;
+                for (let field of newAmountFields) {
+                    if (row[field] !== undefined) {
+                        newAmount = parseFloat(row[field]) || 0;
+                        break;
+                    }
+                }
+                
+                product.totalAmount += totalAmount;
+                product.newAmount += newAmount;
+                product.purchaseCount += 1;
+                
+                const company = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                if (company) product.companies.add(company);
+            });
+
+            const result = Array.from(productMap.values()).map(p => ({
+                ...p,
+                companyCount: p.companies.size,
+                companies: Array.from(p.companies)
+            }));
+            
+            console.log(`找到 ${foundCount} 条有效产品数据，分析出 ${result.length} 个产品`);
+            if (result.length > 0) console.log('第一个产品:', result[0]);
+            return result;
+        }
+
+        // 显示结果
+        function displayResults(companies, activities, products) {
+            console.log('开始显示结果');
+            console.log('Companies:', companies);
+            console.log('Activities:', activities);
+            console.log('Products:', products);
+            
+            const totalRevenue = companies.reduce((sum, c) => sum + c.totalAmount, 0);
+            const totalLeads = activities.reduce((sum, a) => sum + a.leads, 0);
+            const avgConversion = activities.length > 0 ? activities.reduce((sum, a) => sum + a.conversion, 0) / activities.length : 0;
+            const totalReached = activities.reduce((sum, a) => sum + a.reachedCompanies, 0);
+            
+            console.log('统计数据:', { totalRevenue, totalLeads, avgConversion, totalReached });
+
+            // 统计卡片
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-label">总销售额（万元）</div>
+                    <div class="stat-value">${totalRevenue.toFixed(2)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">总线索数</div>
+                    <div class="stat-value">${totalLeads.toLocaleString()}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">触达企业数</div>
+                    <div class="stat-value">${totalReached}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">平均转化率</div>
+                    <div class="stat-value">${avgConversion.toFixed(2)}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">购买企业数</div>
+                    <div class="stat-value">${companies.length}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">活动数量</div>
+                    <div class="stat-value">${activities.length}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">产品种类</div>
+                    <div class="stat-value">${products.length}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">线索价值（万元）</div>
+                    <div class="stat-value">${totalLeads > 0 ? (totalRevenue / totalLeads).toFixed(4) : '0'}</div>
+                </div>
+            `;
+
+            // Top榜单
+            const topCompany = [...companies].sort((a, b) => b.totalAmount - a.totalAmount)[0];
+            const topActivity = [...activities].sort((a, b) => b.amount - a.amount)[0];
+            const topProduct = [...products].sort((a, b) => b.totalAmount - a.totalAmount)[0];
+
+            let topHTML = '';
+            if (topCompany) {
+                topHTML += `
+                    <div class="result-card">
+                        <div class="result-title">🏆 最高消费企业</div>
+                        <div style="color: #666;">
+                            <strong style="color: #333; font-size: 18px;">${topCompany.name}</strong><br>
+                            总消费: ${topCompany.totalAmount.toFixed(2)} 万元 | 
+                            新购: ${topCompany.newAmount.toFixed(2)} 万元 | 
+                            参与活动: ${topCompany.activities.length} 个 | 
+                            购买产品: ${topCompany.products.length} 种
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (topActivity) {
+                topHTML += `
+                    <div class="result-card">
+                        <div class="result-title">🎯 最佳活动</div>
+                        <div style="color: #666;">
+                            <strong style="color: #333; font-size: 18px;">${topActivity.name}</strong><br>
+                            销售额: ${topActivity.amount} 万元 | 
+                            线索数: ${topActivity.leads} | 
+                            转化率: ${topActivity.conversion}% | 
+                            触达: ${topActivity.reachedCompanies} 家企业
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (topProduct) {
+                topHTML += `
+                    <div class="result-card">
+                        <div class="result-title">💎 最畅销产品</div>
+                        <div style="color: #666;">
+                            <strong style="color: #333; font-size: 18px;">${topProduct.name}</strong><br>
+                            销售额: ${topProduct.totalAmount.toFixed(2)} 万元 | 
+                            购买次数: ${topProduct.purchaseCount} | 
+                            购买企业: ${topProduct.companyCount} 家
+                        </div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('topResults').innerHTML = topHTML;
+
+            // 详细表格
+            let tableHTML = '';
+
+            if (companies.length > 0) {
+                const sorted = [...companies].sort((a, b) => b.totalAmount - a.totalAmount);
+                tableHTML += '<h3 style="margin: 30px 0 10px 0;">📊 企业购买排名</h3><table><thead><tr>';
+                tableHTML += '<th>排名</th><th>企业名称</th><th>总消费（万元）</th><th>新购（万元）</th><th>参与活动</th><th>购买产品</th><th>购买次数</th></tr></thead><tbody>';
+                
+                sorted.slice(0, 20).forEach((c, i) => {
+                    tableHTML += `<tr>
+                        <td><strong>${i + 1}</strong></td>
+                        <td><strong>${c.name}</strong></td>
+                        <td>${c.totalAmount.toFixed(2)}</td>
+                        <td>${c.newAmount.toFixed(2)}</td>
+                        <td>${c.activities.length}</td>
+                        <td>${c.products.length}</td>
+                        <td>${c.purchaseCount}</td>
+                    </tr>`;
+                });
+                tableHTML += '</tbody></table>';
+            }
+
+            if (activities.length > 0) {
+                const sorted = [...activities].sort((a, b) => b.amount - a.amount);
+                tableHTML += '<h3 style="margin: 30px 0 10px 0;">🎯 活动效果排名</h3><table><thead><tr>';
+                tableHTML += '<th>活动名称</th><th>线索数</th><th>触达企业</th><th>转化率</th><th>销售额（万元）</th><th>新购转化率</th></tr></thead><tbody>';
+                
+                sorted.forEach(a => {
+                    tableHTML += `<tr>
+                        <td><strong>${a.name}</strong></td>
+                        <td>${a.leads}</td>
+                        <td>${a.reachedCompanies}</td>
+                        <td>${a.conversion}%</td>
+                        <td>${a.amount}</td>
+                        <td>${a.newConversion}%</td>
+                    </tr>`;
+                });
+                tableHTML += '</tbody></table>';
+            }
+
+            if (products.length > 0) {
+                const sorted = [...products].sort((a, b) => b.totalAmount - a.totalAmount);
+                tableHTML += '<h3 style="margin: 30px 0 10px 0;">💎 产品销售排名</h3><table><thead><tr>';
+                tableHTML += '<th>排名</th><th>产品名称</th><th>销售额（万元）</th><th>新购（万元）</th><th>购买次数</th><th>购买企业</th></tr></thead><tbody>';
+                
+                sorted.forEach((p, i) => {
+                    tableHTML += `<tr>
+                        <td><strong>${i + 1}</strong></td>
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.totalAmount.toFixed(2)}</td>
+                        <td>${p.newAmount.toFixed(2)}</td>
+                        <td>${p.purchaseCount}</td>
+                        <td>${p.companyCount}</td>
+                    </tr>`;
+                });
+                tableHTML += '</tbody></table>';
+            }
+
+            document.getElementById('detailResults').innerHTML = tableHTML;
+        }
+
+        // ==================== 智能问答功能 ====================
+        
+        // 问答按钮事件
+        document.getElementById('qaBtn').addEventListener('click', handleQuestion);
+        document.getElementById('qaInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleQuestion();
+        });
+
+        // 示例问题点击事件
+        document.querySelectorAll('.example-tag').forEach(tag => {
+            tag.addEventListener('click', () => {
+                const question = tag.getAttribute('data-q');
+                document.getElementById('qaInput').value = question;
+                handleQuestion();
+            });
+        });
+
+        // 处理用户提问
+        function handleQuestion() {
+            const question = document.getElementById('qaInput').value.trim();
+            const resultDiv = document.getElementById('qaResult');
+            
+            if (!question) {
+                resultDiv.innerHTML = '<div class="qa-answer" style="color: #c62828;">请输入您的问题</div>';
+                resultDiv.classList.add('show');
+                return;
+            }
+
+            // 检查是否有分析数据
+            if (!companies || !activities || !products || companies.length === 0) {
+                resultDiv.innerHTML = '<div class="qa-answer" style="color: #c62828;">请先上传数据并点击"开始分析"</div>';
+                resultDiv.classList.add('show');
+                return;
+            }
+
+            // 分析问题并生成答案
+            const answer = analyzeQuestion(question);
+            resultDiv.innerHTML = answer;
+            resultDiv.classList.add('show');
+            
+            // 滚动到结果
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // 智能分析问题
+        function analyzeQuestion(question) {
+            const q = question.toLowerCase();
+            
+            console.log('收到问题:', question);
+            console.log('当前数据状态:', {
+                companies: companies.length,
+                activities: activities.length,
+                products: products.length
+            });
+            
+            // ==================== 新增：关联查询功能 ====================
+            
+            // 新增查询1: 某个公司购买了哪些产品
+            // 关键：问题中包含公司名 + (购买/买了) + 产品
+            for (let company of companies) {
+                if (q.includes(company.name.toLowerCase()) || question.includes(company.name)) {
+                    if ((q.includes('购买') || q.includes('买了') || q.includes('买过')) && (q.includes('产品') || q.includes('什么'))) {
+                        console.log('匹配到公司产品查询:', company.name);
+                        
+                        // 从购买数据中获取该公司的详细购买记录
+                        const companyPurchases = purchaseData
+                            .filter(row => {
+                                const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                                return companyName === company.name;
+                            })
+                            .map(row => {
+                                const product = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                                const activity = row['活动内容名称'] || row['活动名称'] || row['Activity'] || row['活动'] || row['activity'];
+                                const amount = parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0);
+                                return { product, activity, amount };
+                            })
+                            .filter(item => item.product);
+                        
+                        // 按产品分组统计
+                        const productStats = {};
+                        companyPurchases.forEach(p => {
+                            if (!productStats[p.product]) {
+                                productStats[p.product] = {
+                                    name: p.product,
+                                    totalAmount: 0,
+                                    count: 0,
+                                    activities: new Set()
+                                };
+                            }
+                            productStats[p.product].totalAmount += p.amount;
+                            productStats[p.product].count += 1;
+                            productStats[p.product].activities.add(p.activity);
+                        });
+                        
+                        const productList = Object.values(productStats).sort((a, b) => b.totalAmount - a.totalAmount);
+                        
+                        return `
+                            <h3>🏢 ${company.name} 购买的产品</h3>
+                            <div class="qa-answer">
+                                <p><strong>${company.name}</strong> 共购买了 <strong>${productList.length}</strong> 种产品：</p>
+                                <div class="qa-data">
+                                    📦 <strong>产品购买详情（按金额排序）：</strong><br>
+                                    ${productList.map((p, i) => 
+                                        `${i + 1}. <strong>${p.name}</strong><br>
+                                        　　• 购买金额：${p.totalAmount.toFixed(2)} 万元<br>
+                                        　　• 购买次数：${p.count} 次<br>
+                                        　　• 涉及活动：${Array.from(p.activities).join('、')}`
+                                    ).join('<br><br>')}<br><br>
+                                    📊 <strong>${company.name} 总体数据：</strong><br>
+                                    • 总消费金额：${company.totalAmount.toFixed(2)} 万元<br>
+                                    • 参与活动数：${company.activities.length} 个<br>
+                                    • 购买产品种类：${productList.length} 种
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            // 新增查询2: 某个产品被哪些公司购买
+            // 关键：问题中包含产品名 + (被/哪些) + (公司/购买)
+            for (let product of products) {
+                if (q.includes(product.name.toLowerCase()) || question.includes(product.name)) {
+                    if ((q.includes('被') || q.includes('哪些')) && (q.includes('公司') || q.includes('企业') || q.includes('购买'))) {
+                        console.log('匹配到产品公司查询:', product.name);
+                        
+                        // 从购买数据中获取购买该产品的详细信息
+                        const productPurchases = purchaseData
+                            .filter(row => {
+                                const prodName = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                                return prodName === product.name;
+                            })
+                            .map(row => {
+                                const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                                const activity = row['活动内容名称'] || row['活动名称'] || row['Activity'] || row['活动'] || row['activity'];
+                                const amount = parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0);
+                                return { companyName, activity, amount };
+                            })
+                            .filter(item => item.companyName);
+                        
+                        // 按公司分组统计
+                        const companyStats = {};
+                        productPurchases.forEach(p => {
+                            if (!companyStats[p.companyName]) {
+                                companyStats[p.companyName] = {
+                                    name: p.companyName,
+                                    totalAmount: 0,
+                                    count: 0,
+                                    activities: new Set()
+                                };
+                            }
+                            companyStats[p.companyName].totalAmount += p.amount;
+                            companyStats[p.companyName].count += 1;
+                            companyStats[p.companyName].activities.add(p.activity);
+                        });
+                        
+                        const companyList = Object.values(companyStats).sort((a, b) => b.totalAmount - a.totalAmount);
+                        
+                        return `
+                            <h3>💎 购买 ${product.name} 的公司</h3>
+                            <div class="qa-answer">
+                                <p>共有 <strong>${companyList.length}</strong> 家公司购买了 <strong>${product.name}</strong>：</p>
+                                <div class="qa-data">
+                                    🏢 <strong>购买公司详情（按金额排序）：</strong><br>
+                                    ${companyList.map((c, i) => 
+                                        `${i + 1}. <strong>${c.name}</strong><br>
+                                        　　• 购买金额：${c.totalAmount.toFixed(2)} 万元<br>
+                                        　　• 购买次数：${c.count} 次<br>
+                                        　　• 涉及活动：${Array.from(c.activities).join('、')}`
+                                    ).join('<br><br>')}<br><br>
+                                    📊 <strong>${product.name} 总体数据：</strong><br>
+                                    • 总销售额：${product.totalAmount.toFixed(2)} 万元<br>
+                                    • 总购买次数：${product.purchaseCount} 次<br>
+                                    • 购买企业数：${companyList.length} 家
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            // 新增查询3: 某个活动中哪些公司产生了购买
+            // 关键：问题中包含活动名 + (哪些公司/有哪些) + (购买/买了)
+            for (let activity of activities) {
+                if (q.includes(activity.name.toLowerCase()) || question.includes(activity.name)) {
+                    if ((q.includes('哪些公司') || q.includes('哪些企业') || q.includes('有哪些')) && (q.includes('购买') || q.includes('买了'))) {
+                        console.log('匹配到活动购买公司查询:', activity.name);
+                        
+                        // 从购买数据中找出该活动中购买的公司
+                        const activityPurchases = purchaseData
+                            .filter(row => {
+                                const actName = row['活动内容名称'] || row['活动名称'] || row['Activity'] || row['活动'] || row['activity'];
+                                return actName === activity.name;
+                            })
+                            .map(row => {
+                                const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                                const product = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                                const amount = parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0);
+                                return { companyName, product, amount };
+                            })
+                            .filter(item => item.companyName);
+                        
+                        // 按公司分组
+                        const companyStats = {};
+                        activityPurchases.forEach(p => {
+                            if (!companyStats[p.companyName]) {
+                                companyStats[p.companyName] = {
+                                    name: p.companyName,
+                                    totalAmount: 0,
+                                    products: []
+                                };
+                            }
+                            companyStats[p.companyName].totalAmount += p.amount;
+                            companyStats[p.companyName].products.push({ name: p.product, amount: p.amount });
+                        });
+                        
+                        const companyList = Object.values(companyStats).sort((a, b) => b.totalAmount - a.totalAmount);
+                        
+                        return `
+                            <h3>🎯 ${activity.name} 的购买公司</h3>
+                            <div class="qa-answer">
+                                <p><strong>${activity.name}</strong> 中有 <strong>${companyList.length}</strong> 家公司产生了购买：</p>
+                                <div class="qa-data">
+                                    🏢 <strong>购买公司详情（按金额排序）：</strong><br>
+                                    ${companyList.map((c, i) => 
+                                        `${i + 1}. <strong>${c.name}</strong> - ${c.totalAmount.toFixed(2)} 万元<br>
+                                        　　购买产品：${c.products.map(p => `${p.name}(${p.amount}万)`).join('、')}`
+                                    ).join('<br><br>')}<br><br>
+                                    📊 <strong>${activity.name} 整体数据：</strong><br>
+                                    • 购买企业数：${companyList.length} 家<br>
+                                    • 总销售额：${companyList.reduce((sum, c) => sum + c.totalAmount, 0).toFixed(2)} 万元<br>
+                                    • 触达企业数：${activity.reachedCompanies} 家<br>
+                                    • 转化率：${activity.conversion.toFixed(2)}%<br>
+                                    • 线索数：${activity.leads}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            // 新增查询4: 某个活动中哪些产品被购买
+            // 关键：问题中包含活动名 + (哪些产品/什么产品) + (被购买/买了)
+            for (let activity of activities) {
+                if (q.includes(activity.name.toLowerCase()) || question.includes(activity.name)) {
+                    if ((q.includes('哪些产品') || q.includes('什么产品') || q.includes('产品')) && (q.includes('被购买') || q.includes('购买') || q.includes('买了'))) {
+                        console.log('匹配到活动产品查询:', activity.name);
+                        
+                        // 从购买数据中找出该活动中被购买的产品
+                        const activityProducts = purchaseData
+                            .filter(row => {
+                                const actName = row['活动内容名称'] || row['活动名称'] || row['Activity'] || row['活动'] || row['activity'];
+                                return actName === activity.name;
+                            })
+                            .map(row => {
+                                const product = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                                const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                                const amount = parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0);
+                                return { product, companyName, amount };
+                            })
+                            .filter(item => item.product);
+                        
+                        // 按产品分组
+                        const productStats = {};
+                        activityProducts.forEach(p => {
+                            if (!productStats[p.product]) {
+                                productStats[p.product] = {
+                                    name: p.product,
+                                    totalAmount: 0,
+                                    count: 0,
+                                    companies: []
+                                };
+                            }
+                            productStats[p.product].totalAmount += p.amount;
+                            productStats[p.product].count += 1;
+                            productStats[p.product].companies.push({ name: p.companyName, amount: p.amount });
+                        });
+                        
+                        const productList = Object.values(productStats).sort((a, b) => b.totalAmount - a.totalAmount);
+                        
+                        return `
+                            <h3>🎯 ${activity.name} 的产品销售</h3>
+                            <div class="qa-answer">
+                                <p><strong>${activity.name}</strong> 中有 <strong>${productList.length}</strong> 种产品被购买：</p>
+                                <div class="qa-data">
+                                    💎 <strong>产品销售详情（按金额排序）：</strong><br>
+                                    ${productList.map((p, i) => 
+                                        `${i + 1}. <strong>${p.name}</strong> - ${p.totalAmount.toFixed(2)} 万元<br>
+                                        　　• 购买次数：${p.count} 次<br>
+                                        　　• 购买公司：${p.companies.map(c => `${c.name}(${c.amount}万)`).join('、')}`
+                                    ).join('<br><br>')}<br><br>
+                                    📊 <strong>${activity.name} 整体数据：</strong><br>
+                                    • 产品种类：${productList.length} 种<br>
+                                    • 总销售额：${productList.reduce((sum, p) => sum + p.totalAmount, 0).toFixed(2)} 万元<br>
+                                    • 触达企业数：${activity.reachedCompanies} 家<br>
+                                    • 转化率：${activity.conversion.toFixed(2)}%
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            // 1. 查询某个公司参加了哪些活动（优先级最高，先匹配）
+            // 关键：问题中包含公司名 + (参加/参与) + 活动
+            for (let company of companies) {
+                if (q.includes(company.name.toLowerCase()) || question.includes(company.name)) {
+                    if ((q.includes('参加') || q.includes('参与')) && q.includes('活动')) {
+                        console.log('匹配到公司活动查询:', company.name);
+                        return `
+                            <h3>🏢 ${company.name} 参加的活动</h3>
+                            <div class="qa-answer">
+                                <p><strong>${company.name}</strong> 参加了 <strong>${company.activities.length}</strong> 个活动：</p>
+                                <div class="qa-data">
+                                    📋 <strong>活动列表：</strong><br>
+                                    ${company.activities.map((act, i) => `${i + 1}. ${act}`).join('<br>')}<br><br>
+                                    📊 <strong>该公司总体数据：</strong><br>
+                                    • 总消费金额：${company.totalAmount.toFixed(2)} 万元<br>
+                                    • 新购金额：${company.newAmount.toFixed(2)} 万元<br>
+                                    • 购买产品：${company.products.join('、')}<br>
+                                    • 购买次数：${company.purchaseCount} 次
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            // 2. 查询某个活动触达了哪些公司
+            // 关键：问题中包含活动名 + (触达/有哪些/参加) + (公司/企业)
+            for (let activity of activities) {
+                if (q.includes(activity.name.toLowerCase()) || question.includes(activity.name)) {
+                    if ((q.includes('触达') || q.includes('有哪些') || q.includes('哪些公司') || q.includes('哪些企业')) && (q.includes('公司') || q.includes('企业'))) {
+                        console.log('匹配到活动公司查询:', activity.name);
+                        // 从购买数据中找出参加该活动的公司
+                        const participatingCompanies = purchaseData
+                            .filter(row => {
+                                const actName = row['活动内容名称'] || row['活动名称'] || row['Activity'] || row['活动'] || row['activity'];
+                                return actName === activity.name;
+                            })
+                            .map(row => {
+                                const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                                const product = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                                const amount = parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0);
+                                return { companyName, product, amount };
+                            })
+                            .filter(item => item.companyName);
+                        
+                        const uniqueCompanies = [...new Set(participatingCompanies.map(c => c.companyName))];
+                        const totalActivityAmount = participatingCompanies.reduce((sum, c) => sum + c.amount, 0);
+                        
+                        return `
+                            <h3>🎯 ${activity.name} 触达的公司</h3>
+                            <div class="qa-answer">
+                                <p><strong>${activity.name}</strong> 触达了 <strong>${uniqueCompanies.length}</strong> 家购买企业：</p>
+                                <div class="qa-data">
+                                    📋 <strong>购买企业列表（按金额排序）：</strong><br>
+                                    ${participatingCompanies
+                                        .sort((a, b) => b.amount - a.amount)
+                                        .map((item, i) => `${i + 1}. ${item.companyName} - ${item.product} (${item.amount.toFixed(2)}万元)`)
+                                        .join('<br>')}<br><br>
+                                    📊 <strong>活动整体数据：</strong><br>
+                                    • 该活动产生销售额：${totalActivityAmount.toFixed(2)} 万元<br>
+                                    • 线索数：${activity.leads}<br>
+                                    • 触达企业数（含未购买）：${activity.reachedCompanies} 家<br>
+                                    • 转化率：${activity.conversion.toFixed(2)}%<br>
+                                    • 平均客单价：${uniqueCompanies.length > 0 ? (totalActivityAmount / uniqueCompanies.length).toFixed(2) : '0'} 万元
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            // 3. 查询哪些公司购买了某个产品
+            if ((q.includes('购买') || q.includes('买了')) && (q.includes('哪些') || q.includes('哪个'))) {
+                // 尝试找到产品名称
+                for (let product of products) {
+                    if (q.includes(product.name.toLowerCase()) || question.includes(product.name)) {
+                        // 从购买数据中找出购买该产品的详细信息
+                        const productPurchases = purchaseData
+                            .filter(row => {
+                                const prodName = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                                return prodName === product.name;
+                            })
+                            .map(row => {
+                                const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                                const activity = row['活动内容名称'] || row['活动名称'] || row['Activity'] || row['活动'] || row['activity'];
+                                const amount = parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0);
+                                return { companyName, activity, amount };
+                            })
+                            .filter(item => item.companyName);
+                        
+                        return `
+                            <h3>💎 购买了 ${product.name} 的公司</h3>
+                            <div class="qa-answer">
+                                <p>共有 <strong>${product.companyCount}</strong> 家公司购买了 <strong>${product.name}</strong>：</p>
+                                <div class="qa-data">
+                                    📋 <strong>购买详情（按金额排序）：</strong><br>
+                                    ${productPurchases
+                                        .sort((a, b) => b.amount - a.amount)
+                                        .map((item, i) => `${i + 1}. ${item.companyName} - ${item.activity} (${item.amount.toFixed(2)}万元)`)
+                                        .join('<br>')}<br><br>
+                                    📊 <strong>产品整体数据：</strong><br>
+                                    • 总销售额：${product.totalAmount.toFixed(2)} 万元<br>
+                                    • 购买次数：${product.purchaseCount} 次<br>
+                                    • 购买企业：${product.companyCount} 家<br>
+                                    • 平均单价：${(product.totalAmount / product.purchaseCount).toFixed(2)} 万元
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            // 4. 查询某个公司在某个活动中的表现
+            if (q.includes('在') && (q.includes('活动') || q.includes('峰会') || q.includes('论坛'))) {
+                for (let company of companies) {
+                    if (q.includes(company.name.toLowerCase()) || question.includes(company.name)) {
+                        for (let activity of activities) {
+                            if (q.includes(activity.name.toLowerCase()) || question.includes(activity.name)) {
+                                // 查找该公司在该活动中的购买记录
+                                const purchases = purchaseData
+                                    .filter(row => {
+                                        const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                                        const actName = row['活动内容名称'] || row['活动名称'] || row['Activity'] || row['活动'] || row['activity'];
+                                        return companyName === company.name && actName === activity.name;
+                                    })
+                                    .map(row => {
+                                        const product = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                                        const amount = parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0);
+                                        return { product, amount };
+                                    });
+                                
+                                if (purchases.length > 0) {
+                                    const totalAmount = purchases.reduce((sum, p) => sum + p.amount, 0);
+                                    return `
+                                        <h3>🎯 ${company.name} 在 ${activity.name}</h3>
+                                        <div class="qa-answer">
+                                            <p><strong>${company.name}</strong> 在 <strong>${activity.name}</strong> 中购买了：</p>
+                                            <div class="qa-data">
+                                                📋 <strong>购买详情：</strong><br>
+                                                ${purchases.map((p, i) => `${i + 1}. ${p.product} - ${p.amount.toFixed(2)} 万元`).join('<br>')}<br><br>
+                                                💰 <strong>在该活动中的消费：</strong>${totalAmount.toFixed(2)} 万元<br><br>
+                                                📊 <strong>${company.name} 总体数据：</strong><br>
+                                                • 所有活动总消费：${company.totalAmount.toFixed(2)} 万元<br>
+                                                • 参加活动数：${company.activities.length} 个<br><br>
+                                                🎯 <strong>${activity.name} 活动整体：</strong><br>
+                                                • 活动总销售额：${activity.amount.toFixed(2)} 万元<br>
+                                                • 触达企业数：${activity.reachedCompanies} 家
+                                            </div>
+                                        </div>
+                                    `;
+                                } else {
+                                    return `
+                                        <h3>🎯 ${company.name} 与 ${activity.name}</h3>
+                                        <div class="qa-answer">
+                                            <p>根据购买数据，<strong>${company.name}</strong> 在 <strong>${activity.name}</strong> 中<strong>没有购买记录</strong>。</p>
+                                            <div class="qa-data">
+                                                💡 可能的情况：<br>
+                                                • 该公司参与了活动但未产生购买<br>
+                                                • 该公司在其他活动中有购买：${company.activities.join('、')}<br><br>
+                                                📊 ${company.name} 总体数据：<br>
+                                                • 总消费金额：${company.totalAmount.toFixed(2)} 万元<br>
+                                                • 参加活动数：${company.activities.length} 个
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // ==================== 原有的基础查询功能 ====================
+            
+            // 5. 询问公司相关问题
+            if (q.includes('公司') || q.includes('企业') || q.includes('客户')) {
+                if (q.includes('最高') || q.includes('最多') || q.includes('第一') || q.includes('top')) {
+                    const topCompany = [...companies].sort((a, b) => b.totalAmount - a.totalAmount)[0];
+                    return `
+                        <h3>💼 ${question}</h3>
+                        <div class="qa-answer">
+                            <p><strong>答案：${topCompany.name}</strong></p>
+                            <div class="qa-data">
+                                📊 <strong>详细数据：</strong><br>
+                                • 总消费金额：${topCompany.totalAmount.toFixed(2)} 万元<br>
+                                • 新购金额：${topCompany.newAmount.toFixed(2)} 万元<br>
+                                • 新客户金额：${topCompany.newCustomerAmount.toFixed(2)} 万元<br>
+                                • 参与活动：${topCompany.activities.length} 个<br>
+                                • 购买产品：${topCompany.products.length} 种<br>
+                                • 购买次数：${topCompany.purchaseCount} 次
+                            </div>
+                        </div>
+                    `;
+                }
+                if (q.includes('多少') || q.includes('数量') || q.includes('总共') || q.includes('有几')) {
+                    return `
+                        <h3>💼 ${question}</h3>
+                        <div class="qa-answer">
+                            <p><strong>答案：${companies.length} 家公司</strong></p>
+                            <div class="qa-data">
+                                📊 <strong>补充信息：</strong><br>
+                                • 购买企业总数：${companies.length} 家<br>
+                                • 总消费金额：${companies.reduce((s, c) => s + c.totalAmount, 0).toFixed(2)} 万元<br>
+                                • 平均客单价：${(companies.reduce((s, c) => s + c.totalAmount, 0) / companies.length).toFixed(2)} 万元
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // 6. 询问活动相关问题
+            if (q.includes('活动')) {
+                if (q.includes('最好') || q.includes('最佳') || q.includes('效果') || q.includes('最高')) {
+                    const topActivity = [...activities].sort((a, b) => b.amount - a.amount)[0];
+                    return `
+                        <h3>🎯 ${question}</h3>
+                        <div class="qa-answer">
+                            <p><strong>答案：${topActivity.name}</strong></p>
+                            <div class="qa-data">
+                                📊 <strong>详细数据：</strong><br>
+                                • 销售额：${topActivity.amount.toFixed(2)} 万元<br>
+                                • 线索数：${topActivity.leads}<br>
+                                • 触达企业：${topActivity.reachedCompanies} 家<br>
+                                • 转化率：${topActivity.conversion.toFixed(2)}%<br>
+                                • 新购转化率：${topActivity.newConversion.toFixed(2)}%<br>
+                                • 单个线索价值：${topActivity.leads > 0 ? (topActivity.amount / topActivity.leads).toFixed(4) : '0'} 万元
+                            </div>
+                        </div>
+                    `;
+                }
+                if (q.includes('多少') || q.includes('数量') || q.includes('总共') || q.includes('有几')) {
+                    return `
+                        <h3>🎯 ${question}</h3>
+                        <div class="qa-answer">
+                            <p><strong>答案：${activities.length} 个活动</strong></p>
+                            <div class="qa-data">
+                                📊 <strong>补充信息：</strong><br>
+                                • 活动总数：${activities.length} 个<br>
+                                • 总线索数：${activities.reduce((s, a) => s + a.leads, 0)}<br>
+                                • 总触达企业：${activities.reduce((s, a) => s + a.reachedCompanies, 0)} 家<br>
+                                • 总销售额：${activities.reduce((s, a) => s + a.amount, 0).toFixed(2)} 万元
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // 7. 询问产品相关问题
+            if (q.includes('产品')) {
+                if (q.includes('最畅销') || q.includes('最好') || q.includes('销量') || q.includes('最高')) {
+                    const topProduct = [...products].sort((a, b) => b.totalAmount - a.totalAmount)[0];
+                    return `
+                        <h3>💎 ${question}</h3>
+                        <div class="qa-answer">
+                            <p><strong>答案：${topProduct.name}</strong></p>
+                            <div class="qa-data">
+                                📊 <strong>详细数据：</strong><br>
+                                • 总销售额：${topProduct.totalAmount.toFixed(2)} 万元<br>
+                                • 新购金额：${topProduct.newAmount.toFixed(2)} 万元<br>
+                                • 购买次数：${topProduct.purchaseCount} 次<br>
+                                • 购买企业：${topProduct.companyCount} 家<br>
+                                • 平均单价：${(topProduct.totalAmount / topProduct.purchaseCount).toFixed(2)} 万元
+                            </div>
+                        </div>
+                    `;
+                }
+                if (q.includes('多少') || q.includes('数量') || q.includes('种类') || q.includes('有几')) {
+                    return `
+                        <h3>💎 ${question}</h3>
+                        <div class="qa-answer">
+                            <p><strong>答案：${products.length} 种产品</strong></p>
+                            <div class="qa-data">
+                                📊 <strong>补充信息：</strong><br>
+                                • 产品种类：${products.length} 种<br>
+                                • 总销售额：${products.reduce((s, p) => s + p.totalAmount, 0).toFixed(2)} 万元<br>
+                                • 总购买次数：${products.reduce((s, p) => s + p.purchaseCount, 0)} 次
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // 8. 询问转化率
+            if (q.includes('转化率')) {
+                const avgConversion = activities.reduce((s, a) => s + a.conversion, 0) / activities.length;
+                const topConversion = [...activities].sort((a, b) => b.conversion - a.conversion)[0];
+                return `
+                    <h3>📈 ${question}</h3>
+                    <div class="qa-answer">
+                        <p><strong>平均转化率：${avgConversion.toFixed(2)}%</strong></p>
+                        <div class="qa-data">
+                            📊 <strong>详细数据：</strong><br>
+                            • 平均合同订单转化率：${avgConversion.toFixed(2)}%<br>
+                            • 最高转化率活动：${topConversion.name}（${topConversion.conversion.toFixed(2)}%）<br>
+                            • 总线索数：${activities.reduce((s, a) => s + a.leads, 0)}<br>
+                            • 总销售额：${activities.reduce((s, a) => s + a.amount, 0).toFixed(2)} 万元
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 9. 询问销售额/金额
+            if (q.includes('销售额') || q.includes('营收') || q.includes('金额') || q.includes('收入')) {
+                const totalRevenue = companies.reduce((s, c) => s + c.totalAmount, 0);
+                const totalNew = companies.reduce((s, c) => s + c.newAmount, 0);
+                const totalNewCustomer = companies.reduce((s, c) => s + c.newCustomerAmount, 0);
+                return `
+                    <h3>💰 ${question}</h3>
+                    <div class="qa-answer">
+                        <p><strong>总销售额：${totalRevenue.toFixed(2)} 万元</strong></p>
+                        <div class="qa-data">
+                            📊 <strong>详细数据：</strong><br>
+                            • 合同订单总额：${totalRevenue.toFixed(2)} 万元<br>
+                            • 新购金额：${totalNew.toFixed(2)} 万元（占比 ${(totalNew / totalRevenue * 100).toFixed(2)}%）<br>
+                            • 新客户金额：${totalNewCustomer.toFixed(2)} 万元（占比 ${(totalNewCustomer / totalRevenue * 100).toFixed(2)}%）<br>
+                            • 购买企业数：${companies.length} 家<br>
+                            • 平均客单价：${(totalRevenue / companies.length).toFixed(2)} 万元
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 10. 询问线索
+            if (q.includes('线索')) {
+                const totalLeads = activities.reduce((s, a) => s + a.leads, 0);
+                const totalRevenue = companies.reduce((s, c) => s + c.totalAmount, 0);
+                return `
+                    <h3>📊 ${question}</h3>
+                    <div class="qa-answer">
+                        <p><strong>总线索数：${totalLeads}</strong></p>
+                        <div class="qa-data">
+                            📊 <strong>详细数据：</strong><br>
+                            • 总线索数：${totalLeads.toLocaleString()}<br>
+                            • 触达企业数：${activities.reduce((s, a) => s + a.reachedCompanies, 0)} 家<br>
+                            • 单个线索价值：${(totalRevenue / totalLeads).toFixed(4)} 万元<br>
+                            • 总销售额：${totalRevenue.toFixed(2)} 万元
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 11. 询问新客户
+            if (q.includes('新客户') || q.includes('新用户')) {
+                const totalNewCustomer = companies.reduce((s, c) => s + c.newCustomerAmount, 0);
+                const totalRevenue = companies.reduce((s, c) => s + c.totalAmount, 0);
+                const newCustomerCompanies = companies.filter(c => c.newCustomerAmount > 0);
+                return `
+                    <h3>🌟 ${question}</h3>
+                    <div class="qa-answer">
+                        <p><strong>新客户金额：${totalNewCustomer.toFixed(2)} 万元</strong></p>
+                        <div class="qa-data">
+                            📊 <strong>详细数据：</strong><br>
+                            • 新客户订单金额：${totalNewCustomer.toFixed(2)} 万元<br>
+                            • 新客户占比：${(totalNewCustomer / totalRevenue * 100).toFixed(2)}%<br>
+                            • 新客户数量：${newCustomerCompanies.length} 家<br>
+                            • 新客户平均订单：${newCustomerCompanies.length > 0 ? (totalNewCustomer / newCustomerCompanies.length).toFixed(2) : '0'} 万元
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 12. 询问具体公司/活动/产品
+            // 查找公司
+            const company = companies.find(c => q.includes(c.name.toLowerCase()));
+            if (company) {
+                return `
+                    <h3>🏢 ${company.name}</h3>
+                    <div class="qa-answer">
+                        <div class="qa-data">
+                            📊 <strong>企业详情：</strong><br>
+                            • 总消费金额：${company.totalAmount.toFixed(2)} 万元<br>
+                            • 新购金额：${company.newAmount.toFixed(2)} 万元<br>
+                            • 新客户金额：${company.newCustomerAmount.toFixed(2)} 万元<br>
+                            • 参与活动：${company.activities.join('、')}<br>
+                            • 购买产品：${company.products.join('、')}<br>
+                            • 购买次数：${company.purchaseCount} 次
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 查找活动
+            const activity = activities.find(a => q.includes(a.name.toLowerCase()));
+            if (activity) {
+                return `
+                    <h3>🎯 ${activity.name}</h3>
+                    <div class="qa-answer">
+                        <div class="qa-data">
+                            📊 <strong>活动详情：</strong><br>
+                            • 销售额：${activity.amount.toFixed(2)} 万元<br>
+                            • 线索数：${activity.leads}<br>
+                            • 触达企业：${activity.reachedCompanies} 家<br>
+                            • 转化率：${activity.conversion.toFixed(2)}%<br>
+                            • 新购转化率：${activity.newConversion.toFixed(2)}%<br>
+                            • 新客户金额：${activity.newCustomerAmount.toFixed(2)} 万元<br>
+                            • 单个线索价值：${activity.leads > 0 ? (activity.amount / activity.leads).toFixed(4) : '0'} 万元
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 查找产品
+            const product = products.find(p => q.includes(p.name.toLowerCase()));
+            if (product) {
+                return `
+                    <h3>💎 ${product.name}</h3>
+                    <div class="qa-answer">
+                        <div class="qa-data">
+                            📊 <strong>产品详情：</strong><br>
+                            • 总销售额：${product.totalAmount.toFixed(2)} 万元<br>
+                            • 新购金额：${product.newAmount.toFixed(2)} 万元<br>
+                            • 购买次数：${product.purchaseCount} 次<br>
+                            • 购买企业：${product.companyCount} 家<br>
+                            • 平均单价：${(product.totalAmount / product.purchaseCount).toFixed(2)} 万元<br>
+                            • 购买企业列表：${product.companies.slice(0, 10).join('、')}${product.companies.length > 10 ? '等' : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 默认回答
+            return `
+                <h3>❓ ${question}</h3>
+                <div class="qa-answer">
+                    <p>抱歉，我还不太理解您的问题。您可以尝试以下方式提问：</p>
+                    <div class="qa-data">
+                        💡 <strong>基础统计问题：</strong><br>
+                        • "哪个公司购买金额最高？"<br>
+                        • "哪个活动效果最好？"<br>
+                        • "最畅销的产品是什么？"<br>
+                        • "总销售额是多少？"<br>
+                        • "平均转化率是多少？"<br><br>
+                        🔗 <strong>关联查询问题：</strong><br>
+                        • "腾讯科技参加了哪些活动？"<br>
+                        • "新年营销峰会触达了哪些公司？"<br>
+                        • "哪些公司购买了企业版CRM？"<br>
+                        • "腾讯科技在新年营销峰会购买了什么？"<br><br>
+                        📝 <strong>提示：</strong>您可以直接询问具体的公司名、活动名或产品名
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
