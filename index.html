@@ -314,7 +314,30 @@
             background: white;
             border-radius: 6px;
         }
+
+        .chart-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+            margin-top: 15px;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
     </style>
+    <!-- 引入 Chart.js 图表库 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -346,6 +369,17 @@
                 </div>
             </div>
 
+            <div style="margin-top: 20px;">
+                <!-- 行业归属数据上传（可选）-->
+                <div class="upload-box" onclick="document.getElementById('industryFile').click()" style="max-width: 600px; margin: 0 auto;">
+                    <div class="upload-icon">🏭</div>
+                    <h3>行业归属数据（可选）</h3>
+                    <p>包含字段：公司名、行业归属<br>上传后可进行行业维度分析</p>
+                    <input type="file" id="industryFile" accept=".csv,.xlsx,.xls">
+                    <div id="industryInfo" class="file-info"></div>
+                </div>
+            </div>
+
             <div style="text-align: center;">
                 <button class="btn" id="analyzeBtn" disabled>🚀 开始分析</button>
             </div>
@@ -358,6 +392,12 @@
             <h2 style="margin-bottom: 20px;">🤖 智能问答</h2>
             <p style="color: #666; margin-bottom: 20px;">基于已上传的数据，您可以用自然语言提问，系统会自动分析并回答</p>
             
+            <!-- 新增：行业分析提示 -->
+            <div id="industryTip" style="display: none; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 6px; margin-bottom: 15px;">
+                <strong style="color: #856404;">🏭 行业维度分析已启用！</strong><br>
+                <span style="color: #856404; font-size: 14px;">您可以提问：某行业购买了哪些产品？某行业购买X产品的公司还买了什么？</span>
+            </div>
+            
             <div class="search-box">
                 <input type="text" id="qaInput" class="search-input" placeholder="例如：腾讯科技参加了哪些活动？新年营销峰会触达了哪些公司？哪些公司购买了企业版CRM？">
                 <button class="search-btn" id="qaBtn">🔍 提问</button>
@@ -365,12 +405,12 @@
 
             <div class="qa-examples">
                 <span style="color: #666; font-size: 14px; margin-right: 10px;">💡 常见问题：</span>
-                <div class="example-tag" data-q="腾讯科技购买了哪些产品">腾讯科技购买了哪些产品？</div>
-                <div class="example-tag" data-q="企业版CRM被哪些公司购买">企业版CRM被哪些公司购买？</div>
-                <div class="example-tag" data-q="新年营销峰会有哪些公司购买">新年营销峰会有哪些公司购买？</div>
-                <div class="example-tag" data-q="新年营销峰会有哪些产品被购买">新年营销峰会有哪些产品被购买？</div>
-                <div class="example-tag" data-q="腾讯科技参加了哪些活动">腾讯科技参加了哪些活动？</div>
-                <div class="example-tag" data-q="哪个公司购买金额最高">哪个公司购买金额最高？</div>
+                <div class="example-tag" data-q="互联网行业包含哪些公司">互联网行业包含哪些公司？</div>
+                <div class="example-tag" data-q="互联网行业哪个产品买得最好">互联网行业哪个产品最畅销？</div>
+                <div class="example-tag" data-q="互联网行业购买了企业版CRM的公司还购买了哪些产品">互联网行业购买CRM的还买了什么？</div>
+                <div class="example-tag" data-q="哪些行业购买了企业版CRM">哪些行业购买了企业版CRM？</div>
+                <div class="example-tag" data-q="哪些公司购买了企业版CRM分别花费多少">哪些公司购买了企业版CRM？</div>
+                <div class="example-tag" data-q="哪个公司购买金额最高">购买金额最高的公司</div>
             </div>
 
             <div id="qaResult" class="qa-result"></div>
@@ -387,6 +427,171 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         let purchaseData = [];
+        let leadData = [];
+        let industryData = []; // 新增：行业归属数据
+        let industryMap = new Map(); // 新增：公司名 -> 行业归属 映射
+        let chartInstances = {}; // 存储图表实例，用于销毁旧图表
+
+        // ==================== 图表生成函数 ====================
+        
+        /**
+         * 生成饼图
+         * @param {string} canvasId - Canvas元素ID
+         * @param {Array} data - 数据数组，格式：[{label: '标签', value: 数值}]
+         * @param {string} title - 图表标题
+         */
+        function generatePieChart(canvasId, data, title) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error('Canvas not found:', canvasId);
+                return;
+            }
+            
+            const ctx = canvas.getContext('2d');
+            
+            // 如果已存在图表实例，先销毁
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+            }
+            
+            const colors = [
+                '#667eea', '#764ba2', '#f093fb', '#4facfe',
+                '#43e97b', '#fa709a', '#fee140', '#30cfd0',
+                '#a8edea', '#fed6e3', '#c471ed', '#12c2e9',
+                '#f6d365', '#fda085', '#96fbc4', '#f9f586',
+                '#fbc2eb', '#a6c1ee', '#ffecd2', '#fcb69f'
+            ];
+            
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: data.map(item => item.label),
+                    datasets: [{
+                        data: data.map(item => item.value),
+                        backgroundColor: colors.slice(0, data.length),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map((label, i) => {
+                                            const value = data.datasets[0].data[i];
+                                            return {
+                                                text: `${label}: ${value}`,
+                                                fillStyle: data.datasets[0].backgroundColor[i],
+                                                hidden: false,
+                                                index: i
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: title,
+                            font: { size: 16 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * 生成柱状图
+         * @param {string} canvasId - Canvas元素ID
+         * @param {Array} data - 数据数组，格式：[{label: '标签', value: 数值}]
+         * @param {string} title - 图表标题
+         * @param {string} xLabel - X轴标签
+         * @param {string} yLabel - Y轴标签
+         */
+        function generateBarChart(canvasId, data, title, xLabel = '', yLabel = '') {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error('Canvas not found:', canvasId);
+                return;
+            }
+            
+            const ctx = canvas.getContext('2d');
+            
+            // 如果已存在图表实例，先销毁
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+            }
+            
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(item => item.label),
+                    datasets: [{
+                        label: yLabel || '数值',
+                        data: data.map(item => item.value),
+                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: title,
+                            font: { size: 16 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: !!xLabel,
+                                text: xLabel
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: !!yLabel,
+                                text: yLabel
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ==================== 原有变量继续 ====================
         let activityLeadData = [];
         let companies = [];
         let activities = [];
@@ -401,12 +606,17 @@
             handleFileUpload(e.target.files[0], 'lead');
         });
 
+        // 新增：监听行业归属文件
+        document.getElementById('industryFile').addEventListener('change', (e) => {
+            handleFileUpload(e.target.files[0], 'industry');
+        });
+
         // 处理单个文件上传
         function handleFileUpload(file, type) {
             if (!file) return;
 
             const reader = new FileReader();
-            const infoDiv = type === 'purchase' ? 'purchaseInfo' : 'leadInfo';
+            const infoDiv = type === 'purchase' ? 'purchaseInfo' : (type === 'lead' ? 'leadInfo' : 'industryInfo');
 
             reader.onload = (e) => {
                 try {
@@ -425,9 +635,30 @@
                     if (type === 'purchase') {
                         purchaseData = jsonData;
                         document.getElementById(infoDiv).innerHTML = `✅ 已上传: ${file.name}<br>数据条数: ${jsonData.length}`;
-                    } else {
+                    } else if (type === 'lead') {
                         activityLeadData = jsonData;
                         document.getElementById(infoDiv).innerHTML = `✅ 已上传: ${file.name}<br>数据条数: ${jsonData.length}`;
+                    } else if (type === 'industry') {
+                        industryData = jsonData;
+                        // 构建公司-行业映射
+                        industryMap.clear();
+                        jsonData.forEach(row => {
+                            const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'];
+                            const industry = row['行业归属'] || row['行业'] || row['Industry'] || row['industry'];
+                            if (companyName && industry) {
+                                industryMap.set(companyName, industry);
+                            }
+                        });
+                        console.log('行业映射构建完成，共', industryMap.size, '家公司');
+                        const uniqueIndustries = [...new Set(industryMap.values())];
+                        console.log('包含', uniqueIndustries.length, '个行业:', uniqueIndustries);
+                        document.getElementById(infoDiv).innerHTML = `✅ 已上传: ${file.name}<br>数据条数: ${jsonData.length}<br>行业映射: ${industryMap.size} 家公司，${uniqueIndustries.length} 个行业`;
+                        
+                        // 显示行业分析提示
+                        const industryTip = document.getElementById('industryTip');
+                        if (industryTip && industryMap.size > 0) {
+                            industryTip.style.display = 'block';
+                        }
                     }
 
                     document.getElementById(infoDiv).classList.add('show');
@@ -924,6 +1155,885 @@
             
             // ==================== 新增：关联查询功能 ====================
             
+            // ==================== 行业维度分析功能 ====================
+            
+            // 【行业功能2】某行业购买某产品的公司还购买了哪些其他产品
+            // 关键词匹配优化,支持多种问法,包括"筛选"
+            // 优先级较高,放在前面匹配
+            if ((q.includes('行业') || q.includes('领域')) && 
+                (q.includes('购买') || q.includes('买了') || q.includes('筛选')) && 
+                (q.includes('公司') || q.includes('企业')) &&
+                ((q.includes('还购买') || q.includes('还买') || q.includes('其他产品') || q.includes('同时购买') || 
+                  q.includes('还有哪些') || q.includes('其他') || q.includes('什么产品') || q.includes('哪些产品') || 
+                  q.includes('筛选') || (q.includes('还') && q.includes('产品'))))) {
+                
+                console.log('========== 匹配到行业产品关联购买查询 ==========');
+                console.log('原始问题:', question);
+                console.log('小写问题:', q);
+                
+                if (industryMap.size === 0) {
+                    return `
+                        <h3>🏭 行业产品关联分析</h3>
+                        <div class="qa-answer">
+                            <p style="color: #c62828;">❌ 请先上传"行业归属数据"文件才能进行行业维度分析。</p>
+                            <div class="qa-data">
+                                💡 <strong>使用步骤：</strong><br>
+                                1. 点击"行业归属数据"上传区域<br>
+                                2. 选择包含"公司名"和"行业归属"字段的CSV/Excel文件<br>
+                                3. 上传成功后即可进行行业产品关联分析
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 找到目标行业 - 优化匹配逻辑,支持部分匹配
+                let targetIndustry = null;
+                const uniqueIndustries = [...new Set(industryMap.values())];
+                console.log('所有可用行业:', uniqueIndustries);
+                
+                for (let ind of uniqueIndustries) {
+                    // 支持完整匹配和部分匹配
+                    if (q.includes(ind.toLowerCase()) || question.includes(ind) ||
+                        ind.toLowerCase().includes(q.split('行业')[0].trim()) ||
+                        q.includes(ind.toLowerCase().replace(/\s/g, ''))) {
+                        targetIndustry = ind;
+                        console.log('✓ 匹配到行业:', ind);
+                        break;
+                    }
+                }
+                
+                // 如果没有精确匹配,尝试模糊匹配
+                if (!targetIndustry) {
+                    for (let ind of uniqueIndustries) {
+                        const indKeywords = ind.toLowerCase().split(/[、，\s]+/);
+                        for (let keyword of indKeywords) {
+                            if (keyword.length >= 2 && (q.includes(keyword) || question.includes(keyword))) {
+                                targetIndustry = ind;
+                                console.log('✓ 模糊匹配到行业:', ind, '(通过关键词:', keyword, ')');
+                                break;
+                            }
+                        }
+                        if (targetIndustry) break;
+                    }
+                }
+                
+                // 找到目标产品 - 优化匹配逻辑,支持部分匹配
+                let targetProduct = null;
+                console.log('所有可用产品数量:', products.length);
+                
+                for (let prod of products) {
+                    // 支持完整匹配和部分匹配
+                    if (q.includes(prod.name.toLowerCase()) || question.includes(prod.name) ||
+                        prod.name.toLowerCase().includes(q) ||
+                        q.replace(/\s/g, '').includes(prod.name.toLowerCase().replace(/\s/g, ''))) {
+                        targetProduct = prod.name;
+                        console.log('✓ 匹配到产品:', prod.name);
+                        break;
+                    }
+                }
+                
+                // 如果没有精确匹配,尝试模糊匹配(至少4个字符)
+                if (!targetProduct) {
+                    for (let prod of products) {
+                        const prodKeywords = prod.name.toLowerCase().split(/[、，\s]+/);
+                        for (let keyword of prodKeywords) {
+                            if (keyword.length >= 4 && (q.includes(keyword) || question.includes(keyword))) {
+                                targetProduct = prod.name;
+                                console.log('✓ 模糊匹配到产品:', prod.name, '(通过关键词:', keyword, ')');
+                                break;
+                            }
+                        }
+                        if (targetProduct) break;
+                    }
+                }
+                
+                console.log('最终识别 - 行业:', targetIndustry, '| 产品:', targetProduct);
+                
+                if (!targetIndustry) {
+                    return `
+                        <h3>🏭 行业产品关联分析</h3>
+                        <div class="qa-answer">
+                            <p style="color: #c62828;">❌ 未能识别行业名称"<strong>${question.split('行业')[0]}</strong>"。</p>
+                            <div class="qa-data">
+                                💡 <strong>可用行业列表 (共${uniqueIndustries.length}个)：</strong><br>
+                                <div style="column-count: 3; column-gap: 20px; margin-top: 10px;">
+                                    ${uniqueIndustries.map((ind, i) => `${i + 1}. ${ind}`).join('<br>')}
+                                </div>
+                                <br><br>
+                                <strong style="color: #667eea;">💡 提示：</strong>请在问题中使用上述行业名称的完整或部分关键词。
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                if (!targetProduct) {
+                    return `
+                        <h3>🏭 ${targetIndustry} - 产品关联分析</h3>
+                        <div class="qa-answer">
+                            <p style="color: #c62828;">❌ 未能识别产品名称。</p>
+                            <div class="qa-data">
+                                💡 <strong>可用产品列表 (前30个)：</strong><br>
+                                <div style="column-count: 2; column-gap: 20px; margin-top: 10px;">
+                                    ${products.slice(0, 30).map((p, i) => `${i + 1}. ${p.name}`).join('<br>')}
+                                </div>
+                                ${products.length > 30 ? `<br>...还有 ${products.length - 30} 种产品` : ''}
+                                <br><br>
+                                <strong style="color: #667eea;">💡 提示：</strong>请在问题中使用准确的产品名称。
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                console.log('目标行业:', targetIndustry, '目标产品:', targetProduct);
+                
+                // 找出该行业购买了目标产品的公司
+                const targetCompanies = new Set();
+                purchaseData.forEach(row => {
+                    const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                    const prodName = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                    const industry = industryMap.get(companyName);
+                    
+                    if (industry === targetIndustry && prodName === targetProduct) {
+                        targetCompanies.add(companyName);
+                    }
+                });
+                
+                if (targetCompanies.size === 0) {
+                    return `
+                        <h3>🏭 ${targetIndustry} - ${targetProduct} 关联分析</h3>
+                        <div class="qa-answer">
+                            <p><strong>${targetIndustry}</strong> 行业中没有公司购买 <strong>${targetProduct}</strong>。</p>
+                        </div>
+                    `;
+                }
+                
+                // 统计这些公司还购买了哪些其他产品
+                const otherProducts = {};
+                purchaseData.forEach(row => {
+                    const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                    const prodName = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['品'] || row['product'];
+                    const amount = parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0);
+                    
+                    if (targetCompanies.has(companyName) && prodName && prodName !== targetProduct) {
+                        if (!otherProducts[prodName]) {
+                            otherProducts[prodName] = {
+                                name: prodName,
+                                totalAmount: 0,
+                                companyCount: 0,
+                                companies: new Set()
+                            };
+                        }
+                        otherProducts[prodName].totalAmount += amount;
+                        otherProducts[prodName].companies.add(companyName);
+                        otherProducts[prodName].companyCount = otherProducts[prodName].companies.size;
+                    }
+                });
+                
+                const otherProductList = Object.values(otherProducts)
+                    .sort((a, b) => b.companyCount - a.companyCount)
+                    .map(p => ({
+                        ...p,
+                        companies: Array.from(p.companies),
+                        penetration: (p.companyCount / targetCompanies.size * 100).toFixed(1)
+                    }));
+                
+                // 生成图表数据（前20名）
+                const chartId = 'chart_industry_corr_' + Date.now();
+                setTimeout(() => {
+                    const top20 = otherProductList.slice(0, 20);
+                    if (top20.length > 0) {
+                        const chartData = top20.map(p => ({
+                            label: p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name,
+                            value: p.companyCount
+                        }));
+                        generateBarChart(chartId, chartData, 
+                            `${targetIndustry} - ${targetProduct} 关联产品分析（按购买公司数）`,
+                            '关联产品',
+                            '购买公司数');
+                    }
+                }, 100);
+                
+                return `
+                    <h3>🏭 ${targetIndustry} - ${targetProduct} 产品关联分析</h3>
+                    <div class="qa-answer">
+                        <p><strong>${targetIndustry}</strong> 行业中有 <strong>${targetCompanies.size}</strong> 家公司购买了 <strong>${targetProduct}</strong></p>
+                        <div class="qa-data" style="margin-top: 10px; padding: 12px; background: #f0f7ff; border-radius: 6px; border-left: 4px solid #667eea;">
+                            <strong style="color: #667eea;">📋 目标公司列表：</strong><br>
+                            <div style="margin-top: 8px; color: #555;">
+                                ${Array.from(targetCompanies).map((c, i) => `${i + 1}. ${c}`).join(' | ')}
+                            </div>
+                        </div>
+                        <p style="margin-top: 15px;">这些公司还购买了以下 <strong>${otherProductList.length}</strong> 种其他产品：</p>
+                        <div class="qa-data">
+                            <h4 style="color: #667eea; margin-bottom: 10px;">📦 关联产品分析（按购买公司数排序）：</h4>
+                            ${otherProductList.map((p, i) => `
+                                <div style="margin-bottom: 15px; padding: 15px; background: ${i % 2 === 0 ? '#f8f9ff' : 'white'}; border-radius: 6px; border-left: 4px solid ${i < 3 ? '#667eea' : '#ccc'};">
+                                    <strong style="color: #333; font-size: 16px;">${i + 1}. ${p.name}</strong>
+                                    <span style="color: white; background: #764ba2; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 8px;">TOP ${i + 1}</span><br>
+                                    <div style="margin-top: 8px; color: #666; font-size: 14px;">
+                                        • 购买公司数: <strong style="color: #764ba2;">${p.companyCount}</strong> 家 / ${targetCompanies.size} 家
+                                        （渗透率: <strong style="color: #e91e63;">${p.penetration}%</strong>）<br>
+                                        • 总购买金额: <strong style="color: #764ba2;">${p.totalAmount.toFixed(2)}</strong> 万元<br>
+                                        • 平均单价: <strong>${(p.totalAmount / p.companyCount).toFixed(2)}</strong> 万元<br>
+                                        • 购买公司: <span style="color: #555;">${p.companies.slice(0, 5).join('、')}${p.companies.length > 5 ? ` 等${p.companies.length}家` : ''}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                            <div style="margin-top: 20px; padding: 15px; background: #e8f5e9; border-radius: 6px;">
+                                <strong style="color: #2e7d32;">📈 关联分析总结：</strong><br>
+                                • 分析对象：${targetIndustry} 行业中购买 ${targetProduct} 的公司<br>
+                                • 目标公司数：${targetCompanies.size} 家<br>
+                                • 关联产品数：${otherProductList.length} 种<br>
+                                • 关联产品总额：${otherProductList.reduce((sum, p) => sum + p.totalAmount, 0).toFixed(2)} 万元<br>
+                                • 最高渗透产品：${otherProductList[0]?.name || '无'} (${otherProductList[0]?.penetration || 0}% 的公司同时购买)<br>
+                                • 平均关联产品数：${(otherProductList.reduce((sum, p) => sum + p.companyCount, 0) / targetCompanies.size).toFixed(1)} 种/公司<br>
+                                <br>
+                                <strong style="color: #2e7d32;">💡 商业洞察：</strong><br>
+                                ${otherProductList[0] ? 
+                                    `在 ${targetIndustry} 行业，购买 ${targetProduct} 的公司中，有 <strong>${otherProductList[0].penetration}%</strong> 也同时购买了 <strong>${otherProductList[0].name}</strong>，
+                                    建议将这两个产品进行<strong>捆绑销售</strong>或<strong>交叉营销</strong>。` : 
+                                    '暂无其他产品购买记录，建议开发配套产品或服务。'}
+                                ${otherProductList.length >= 3 ? 
+                                    `<br><br>前三大关联产品 (${otherProductList.slice(0,3).map(p => p.name).join('、')}) 的平均渗透率为 <strong>${(otherProductList.slice(0,3).reduce((sum, p) => sum + parseFloat(p.penetration), 0) / 3).toFixed(1)}%</strong>，
+                                    可作为重点推广的产品组合。` : ''}
+                            </div>
+                            
+                            <!-- 可视化图表 -->
+                            ${otherProductList.length > 0 ? `
+                            <div class="chart-container">
+                                <div class="chart-title">📊 关联产品可视化分析（Top 20，按购买公司数排序）</div>
+                                <div class="chart-wrapper">
+                                    <canvas id="${chartId}"></canvas>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 【行业功能3】查询某一行业包含哪些公司
+            // 关键词：行业名 + (包含/有哪些) + 公司
+            if ((q.includes('行业') || q.includes('领域')) && 
+                (q.includes('包含') || q.includes('有哪些') || q.includes('哪些公司') || q.includes('都有')) &&
+                (q.includes('公司') || q.includes('企业'))) {
+                
+                console.log('========== 匹配到行业公司列表查询 ==========');
+                
+                if (industryMap.size === 0) {
+                    return `
+                        <h3>🏭 行业公司查询</h3>
+                        <div class="qa-answer">
+                            <p style="color: #c62828;">❌ 请先上传"行业归属数据"文件才能进行行业维度分析。</p>
+                            <div class="qa-data">
+                                💡 <strong>使用步骤：</strong><br>
+                                1. 点击"行业归属数据"上传区域<br>
+                                2. 选择包含"公司名"和"行业归属"字段的CSV/Excel文件<br>
+                                3. 上传成功后即可查询各行业的公司列表
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 找到目标行业
+                let targetIndustry = null;
+                const uniqueIndustries = [...new Set(industryMap.values())];
+                
+                for (let ind of uniqueIndustries) {
+                    if (q.includes(ind.toLowerCase()) || question.includes(ind) ||
+                        ind.toLowerCase().includes(q.split('行业')[0].trim()) ||
+                        q.includes(ind.toLowerCase().replace(/\s/g, ''))) {
+                        targetIndustry = ind;
+                        break;
+                    }
+                }
+                
+                // 模糊匹配
+                if (!targetIndustry) {
+                    for (let ind of uniqueIndustries) {
+                        const indKeywords = ind.toLowerCase().split(/[、，\s]+/);
+                        for (let keyword of indKeywords) {
+                            if (keyword.length >= 2 && (q.includes(keyword) || question.includes(keyword))) {
+                                targetIndustry = ind;
+                                break;
+                            }
+                        }
+                        if (targetIndustry) break;
+                    }
+                }
+                
+                if (!targetIndustry) {
+                    return `
+                        <h3>🏭 行业公司查询</h3>
+                        <div class="qa-answer">
+                            <p style="color: #c62828;">❌ 未能识别行业名称。</p>
+                            <div class="qa-data">
+                                💡 <strong>可用行业列表 (共${uniqueIndustries.length}个)：</strong><br>
+                                <div style="column-count: 3; column-gap: 20px; margin-top: 10px;">
+                                    ${uniqueIndustries.map((ind, i) => `${i + 1}. ${ind}`).join('<br>')}
+                                </div>
+                                <br><br>
+                                <strong style="color: #667eea;">💡 提示：</strong>请在问题中使用上述行业名称的完整或部分关键词。
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 获取该行业的所有公司
+                const industryCompanies = [];
+                industryMap.forEach((industry, companyName) => {
+                    if (industry === targetIndustry) {
+                        // 查找该公司的购买数据
+                        const companyData = companies.find(c => c.name === companyName);
+                        if (companyData) {
+                            industryCompanies.push({
+                                name: companyName,
+                                totalAmount: companyData.totalAmount,
+                                productCount: companyData.products.length,
+                                activityCount: companyData.activities.length
+                            });
+                        } else {
+                            // 即使没有购买数据，也列出公司名
+                            industryCompanies.push({
+                                name: companyName,
+                                totalAmount: 0,
+                                productCount: 0,
+                                activityCount: 0
+                            });
+                        }
+                    }
+                });
+                
+                // 按购买金额排序
+                industryCompanies.sort((a, b) => b.totalAmount - a.totalAmount);
+                
+                // 计算统计数据
+                const totalAmount = industryCompanies.reduce((sum, c) => sum + c.totalAmount, 0);
+                const activeCompanies = industryCompanies.filter(c => c.totalAmount > 0);
+                
+                return `
+                    <h3>🏭 ${targetIndustry} - 公司列表</h3>
+                    <div class="qa-answer">
+                        <p><strong>${targetIndustry}</strong> 行业共有 <strong>${industryCompanies.length}</strong> 家公司</p>
+                        <div class="qa-data" style="margin-top: 10px; padding: 12px; background: #f0f7ff; border-radius: 6px; border-left: 4px solid #667eea;">
+                            <strong style="color: #667eea;">📊 行业概况：</strong><br>
+                            <div style="margin-top: 8px; color: #555;">
+                                • 公司总数：${industryCompanies.length} 家<br>
+                                • 有购买记录：${activeCompanies.length} 家<br>
+                                • 行业总消费：${totalAmount.toFixed(2)} 万元<br>
+                                • 平均客单价：${activeCompanies.length > 0 ? (totalAmount / activeCompanies.length).toFixed(2) : '0'} 万元
+                            </div>
+                        </div>
+                        <div class="qa-data">
+                            <h4 style="color: #667eea; margin-bottom: 10px;">🏢 公司列表（按购买金额排序）：</h4>
+                            ${industryCompanies.map((c, i) => `
+                                <div style="margin-bottom: 12px; padding: 12px; background: ${i % 2 === 0 ? '#f8f9ff' : 'white'}; border-radius: 6px; border-left: 3px solid ${c.totalAmount > 0 ? '#667eea' : '#ccc'};">
+                                    <strong style="color: #333; font-size: 15px;">${i + 1}. ${c.name}</strong>
+                                    ${c.totalAmount > 0 ? `
+                                        <span style="color: #764ba2; font-weight: bold; margin-left: 10px;">${c.totalAmount.toFixed(2)} 万元</span><br>
+                                        <div style="margin-top: 5px; margin-left: 20px; color: #666; font-size: 14px;">
+                                            • 购买产品：${c.productCount} 种 | 参与活动：${c.activityCount} 个
+                                        </div>
+                                    ` : `
+                                        <span style="color: #999; margin-left: 10px;">（暂无购买记录）</span>
+                                    `}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 【行业功能4】查询某一行业哪个产品买得最好
+            // 关键词：行业名 + (哪个产品/什么产品) + (最好/最多/最畅销)
+            if ((q.includes('行业') || q.includes('领域')) && 
+                (q.includes('哪个产品') || q.includes('什么产品') || q.includes('哪种产品')) &&
+                (q.includes('最好') || q.includes('最多') || q.includes('最畅销') || q.includes('买得') || q.includes('销量'))) {
+                
+                console.log('========== 匹配到行业热销产品查询 ==========');
+                
+                if (industryMap.size === 0) {
+                    return `
+                        <h3>🏭 行业热销产品分析</h3>
+                        <div class="qa-answer">
+                            <p style="color: #c62828;">❌ 请先上传"行业归属数据"文件才能进行行业维度分析。</p>
+                            <div class="qa-data">
+                                💡 <strong>使用步骤：</strong><br>
+                                1. 点击"行业归属数据"上传区域<br>
+                                2. 选择包含"公司名"和"行业归属"字段的CSV/Excel文件<br>
+                                3. 上传成功后即可分析各行业的热销产品
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 找到目标行业
+                let targetIndustry = null;
+                const uniqueIndustries = [...new Set(industryMap.values())];
+                
+                for (let ind of uniqueIndustries) {
+                    if (q.includes(ind.toLowerCase()) || question.includes(ind) ||
+                        ind.toLowerCase().includes(q.split('行业')[0].trim()) ||
+                        q.includes(ind.toLowerCase().replace(/\s/g, ''))) {
+                        targetIndustry = ind;
+                        break;
+                    }
+                }
+                
+                // 模糊匹配
+                if (!targetIndustry) {
+                    for (let ind of uniqueIndustries) {
+                        const indKeywords = ind.toLowerCase().split(/[、，\s]+/);
+                        for (let keyword of indKeywords) {
+                            if (keyword.length >= 2 && (q.includes(keyword) || question.includes(keyword))) {
+                                targetIndustry = ind;
+                                break;
+                            }
+                        }
+                        if (targetIndustry) break;
+                    }
+                }
+                
+                if (!targetIndustry) {
+                    return `
+                        <h3>🏭 行业热销产品分析</h3>
+                        <div class="qa-answer">
+                            <p style="color: #c62828;">❌ 未能识别行业名称。</p>
+                            <div class="qa-data">
+                                💡 <strong>可用行业列表 (共${uniqueIndustries.length}个)：</strong><br>
+                                <div style="column-count: 3; column-gap: 20px; margin-top: 10px;">
+                                    ${uniqueIndustries.map((ind, i) => `${i + 1}. ${ind}`).join('<br>')}
+                                </div>
+                                <br><br>
+                                <strong style="color: #667eea;">💡 提示：</strong>请在问题中使用上述行业名称的完整或部分关键词。
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 统计该行业的产品购买情况
+                const industryProductStats = {};
+                purchaseData.forEach(row => {
+                    const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                    const prodName = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                    const amount = parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0);
+                    const industry = industryMap.get(companyName);
+                    
+                    if (industry === targetIndustry && prodName) {
+                        if (!industryProductStats[prodName]) {
+                            industryProductStats[prodName] = {
+                                name: prodName,
+                                totalAmount: 0,
+                                purchaseCount: 0,
+                                companyCount: 0,
+                                companies: new Set()
+                            };
+                        }
+                        industryProductStats[prodName].totalAmount += amount;
+                        industryProductStats[prodName].purchaseCount += 1;
+                        industryProductStats[prodName].companies.add(companyName);
+                        industryProductStats[prodName].companyCount = industryProductStats[prodName].companies.size;
+                    }
+                });
+                
+                const productList = Object.values(industryProductStats)
+                    .map(p => ({
+                        ...p,
+                        companies: Array.from(p.companies)
+                    }))
+                    .sort((a, b) => b.totalAmount - a.totalAmount);
+                
+                if (productList.length === 0) {
+                    return `
+                        <h3>🏭 ${targetIndustry} - 热销产品分析</h3>
+                        <div class="qa-answer">
+                            <p><strong>${targetIndustry}</strong> 行业暂无产品购买记录。</p>
+                        </div>
+                    `;
+                }
+                
+                // 生成图表数据（前20名）- 使用饼图展示各产品销售额占比
+                const chartId = 'chart_industry_bestsellers_' + Date.now();
+                setTimeout(() => {
+                    const top20 = productList.slice(0, 20);
+                    if (top20.length > 0) {
+                        const chartData = top20.map(p => ({
+                            label: p.name.length > 20 ? p.name.substring(0, 20) + '...' : p.name,
+                            value: parseFloat(p.totalAmount.toFixed(2))
+                        }));
+                        generatePieChart(chartId, chartData, 
+                            `${targetIndustry} 行业产品销售额分布（Top 20）`);
+                    }
+                }, 100);
+                
+                const topProduct = productList[0];
+                const totalAmount = productList.reduce((sum, p) => sum + p.totalAmount, 0);
+                
+                return `
+                    <h3>🏭 ${targetIndustry} - 热销产品排行</h3>
+                    <div class="qa-answer">
+                        <p><strong>${targetIndustry}</strong> 行业共购买了 <strong>${productList.length}</strong> 种产品，总金额 <strong>${totalAmount.toFixed(2)}</strong> 万元</p>
+                        <div class="qa-data" style="margin-top: 10px; padding: 12px; background: #fff3e0; border-radius: 6px; border-left: 4px solid #ff9800;">
+                            <strong style="color: #e65100;">🏆 最畅销产品：${topProduct.name}</strong><br>
+                            <div style="margin-top: 8px; color: #555;">
+                                • 销售额：<strong style="color: #e65100;">${topProduct.totalAmount.toFixed(2)}</strong> 万元（占比 ${(topProduct.totalAmount / totalAmount * 100).toFixed(1)}%）<br>
+                                • 购买公司：${topProduct.companyCount} 家<br>
+                                • 购买次数：${topProduct.purchaseCount} 次<br>
+                                • 购买公司：${topProduct.companies.slice(0, 5).join('、')}${topProduct.companies.length > 5 ? ` 等${topProduct.companies.length}家` : ''}
+                            </div>
+                        </div>
+                        <div class="qa-data">
+                            <h4 style="color: #667eea; margin-bottom: 10px;">📊 产品销售排行（按销售额排序）：</h4>
+                            ${productList.slice(0, 10).map((p, i) => `
+                                <div style="margin-bottom: 12px; padding: 12px; background: ${i % 2 === 0 ? '#f8f9ff' : 'white'}; border-radius: 6px; border-left: 4px solid ${i < 3 ? '#667eea' : '#ccc'};">
+                                    <strong style="color: #333; font-size: 15px;">${i + 1}. ${p.name}</strong>
+                                    ${i === 0 ? '<span style="color: white; background: #ff9800; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 8px;">🏆 TOP 1</span>' : ''}
+                                    ${i === 1 ? '<span style="color: white; background: #9e9e9e; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 8px;">🥈 TOP 2</span>' : ''}
+                                    ${i === 2 ? '<span style="color: white; background: #cd7f32; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 8px;">🥉 TOP 3</span>' : ''}
+                                    <br>
+                                    <div style="margin-top: 8px; color: #666; font-size: 14px;">
+                                        • 销售额: <strong style="color: #764ba2;">${p.totalAmount.toFixed(2)}</strong> 万元
+                                        （占比: <strong>${(p.totalAmount / totalAmount * 100).toFixed(1)}%</strong>）<br>
+                                        • 购买公司数: <strong>${p.companyCount}</strong> 家 | 购买次数: <strong>${p.purchaseCount}</strong> 次<br>
+                                        • 平均单价: <strong>${(p.totalAmount / p.purchaseCount).toFixed(2)}</strong> 万元<br>
+                                        • 购买公司: <span style="color: #555;">${p.companies.slice(0, 3).join('、')}${p.companies.length > 3 ? ` 等${p.companies.length}家` : ''}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                            ${productList.length > 10 ? `<p style="color: #999; text-align: center; margin-top: 10px;">...还有 ${productList.length - 10} 种产品</p>` : ''}
+                            
+                            <div style="margin-top: 20px; padding: 15px; background: #e8f5e9; border-radius: 6px;">
+                                <strong style="color: #2e7d32;">📈 ${targetIndustry} 行业产品统计：</strong><br>
+                                • 产品总数：${productList.length} 种<br>
+                                • 总销售额：${totalAmount.toFixed(2)} 万元<br>
+                                • 平均产品销售额：${(totalAmount / productList.length).toFixed(2)} 万元<br>
+                                • 前3名产品占比：${(productList.slice(0, 3).reduce((sum, p) => sum + p.totalAmount, 0) / totalAmount * 100).toFixed(1)}%<br>
+                                • 最受欢迎产品：${productList.sort((a, b) => b.companyCount - a.companyCount)[0].name} (${productList.sort((a, b) => b.companyCount - a.companyCount)[0].companyCount} 家公司购买)
+                            </div>
+                            
+                            <!-- 可视化图表 -->
+                            ${productList.length > 0 ? `
+                            <div class="chart-container">
+                                <div class="chart-title">📊 产品销售额占比分布（Top 20 饼图）</div>
+                                <div class="chart-wrapper">
+                                    <canvas id="${chartId}"></canvas>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 【行业功能1】查询哪些行业购买了某个产品
+            // 关键词：哪些行业 + 产品名 + 购买 (但不包含"公司还买"等关联查询关键词)
+            for (let product of products) {
+                if (q.includes(product.name.toLowerCase()) || question.includes(product.name)) {
+                    // 确保不是关联查询(避免与行业功能2冲突)
+                    if ((q.includes('哪些行业') || q.includes('什么行业')) && 
+                        (q.includes('购买') || q.includes('买了')) &&
+                        !q.includes('公司') && !q.includes('企业') && !q.includes('还')) {
+                        
+                        console.log('匹配到行业购买产品查询:', product.name);
+                        
+                        if (industryMap.size === 0) {
+                            return `
+                                <h3>🏭 行业分析 - ${product.name}</h3>
+                                <div class="qa-answer">
+                                    <p style="color: #c62828;">❌ 请先上传"行业归属数据"文件才能进行行业维度分析。</p>
+                                    <div class="qa-data">
+                                        💡 <strong>提示：</strong><br>
+                                        • 请上传包含"公司名"和"行业归属"字段的CSV或Excel文件<br>
+                                        • 文件应包含所有公司的行业信息<br>
+                                        • 上传后即可进行行业维度的深度分析
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        // 获取购买该产品的公司及行业
+                        const productPurchases = purchaseData
+                            .filter(row => {
+                                const prodName = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                                return prodName === product.name;
+                            })
+                            .map(row => {
+                                const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                                const amount = parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0);
+                                const industry = industryMap.get(companyName) || '未知行业';
+                                return { companyName, industry, amount };
+                            })
+                            .filter(item => item.companyName);
+                        
+                        // 按行业分组统计
+                        const industryStats = {};
+                        productPurchases.forEach(p => {
+                            if (!industryStats[p.industry]) {
+                                industryStats[p.industry] = {
+                                    industry: p.industry,
+                                    totalAmount: 0,
+                                    companyCount: 0,
+                                    companies: []
+                                };
+                            }
+                            industryStats[p.industry].totalAmount += p.amount;
+                            if (!industryStats[p.industry].companies.find(c => c.name === p.companyName)) {
+                                industryStats[p.industry].companyCount += 1;
+                                industryStats[p.industry].companies.push({ name: p.companyName, amount: p.amount });
+                            }
+                        });
+                        
+                        const industryList = Object.values(industryStats).sort((a, b) => b.totalAmount - a.totalAmount);
+                        
+                        // 生成图表数据（前20名）- 使用饼图展示各行业购买金额占比
+                        const chartId = 'chart_industry_product_' + Date.now();
+                        setTimeout(() => {
+                            const top20 = industryList.slice(0, 20);
+                            if (top20.length > 0) {
+                                const chartData = top20.map(ind => ({
+                                    label: ind.industry.length > 15 ? ind.industry.substring(0, 15) + '...' : ind.industry,
+                                    value: parseFloat(ind.totalAmount.toFixed(2))
+                                }));
+                                generatePieChart(chartId, chartData, 
+                                    `${product.name} 各行业购买金额分布（Top 20）`);
+                            }
+                        }, 100);
+                        
+                        return `
+                            <h3>🏭 ${product.name} - 行业购买分析</h3>
+                            <div class="qa-answer">
+                                <p>共有 <strong>${industryList.length}</strong> 个行业购买了 <strong>${product.name}</strong></p>
+                                <div class="qa-data">
+                                    <h4 style="color: #667eea; margin-bottom: 10px;">📊 行业购买排行（按金额排序）：</h4>
+                                    ${industryList.map((ind, i) => `
+                                        <div style="margin-bottom: 15px; padding: 15px; background: ${i % 2 === 0 ? '#f8f9ff' : 'white'}; border-radius: 6px; border-left: 4px solid ${i === 0 ? '#667eea' : '#ccc'};">
+                                            <strong style="color: #333; font-size: 16px;">${i + 1}. ${ind.industry}</strong>
+                                            <span style="color: #764ba2; font-weight: bold; margin-left: 10px;">${ind.totalAmount.toFixed(2)} 万元</span><br>
+                                            <div style="margin-top: 8px; color: #666; font-size: 14px;">
+                                                购买公司数: <strong>${ind.companyCount}</strong> 家 | 
+                                                平均客单价: <strong>${(ind.totalAmount / ind.companyCount).toFixed(2)}</strong> 万元<br>
+                                                <div style="margin-top: 5px; margin-left: 15px;">
+                                                    ${ind.companies.slice(0, 5).map(c => `• ${c.name}`).join('<br>')}
+                                                    ${ind.companies.length > 5 ? `<br>• ... 等 ${ind.companies.length} 家公司` : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                    <div style="margin-top: 20px; padding: 15px; background: #e8f5e9; border-radius: 6px;">
+                                        <strong style="color: #2e7d32;">📈 ${product.name} 行业统计汇总：</strong><br>
+                                        • 涉及行业数：${industryList.length} 个<br>
+                                        • 购买公司总数：${industryList.reduce((sum, ind) => sum + ind.companyCount, 0)} 家<br>
+                                        • 总销售额：${product.totalAmount.toFixed(2)} 万元<br>
+                                        • 最大行业市场：${industryList[0]?.industry} (${industryList[0]?.totalAmount.toFixed(2)} 万元)<br>
+                                        • 行业平均购买额：${(product.totalAmount / industryList.length).toFixed(2)} 万元
+                                    </div>
+                                    
+                                    <!-- 可视化图表 -->
+                                    ${industryList.length > 0 ? `
+                                    <div class="chart-container">
+                                        <div class="chart-title">📊 各行业购买金额占比分布（Top 20 饼图）</div>
+                                        <div class="chart-wrapper">
+                                            <canvas id="${chartId}"></canvas>
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            // 【新功能1】查询所有公司购买产品的交叉数据（花费明细）
+            // 关键词：所有公司 + 购买 + 产品 + 花费/金额
+            if ((q.includes('所有公司') || q.includes('全部公司') || q.includes('每个公司') || q.includes('各公司')) && 
+                (q.includes('购买') || q.includes('买了')) && 
+                (q.includes('产品') || q.includes('什么')) && 
+                (q.includes('花费') || q.includes('金额') || q.includes('多少'))) {
+                
+                console.log('匹配到所有公司购买产品交叉数据查询');
+                
+                // 构建公司-产品交叉数据矩阵
+                const crossData = [];
+                companies.forEach(company => {
+                    // 获取该公司的购买记录
+                    const companyPurchases = purchaseData
+                        .filter(row => {
+                            const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                            return companyName === company.name;
+                        })
+                        .map(row => {
+                            const product = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                            const amount = parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0);
+                            return { product, amount };
+                        })
+                        .filter(item => item.product);
+                    
+                    // 按产品分组统计
+                    const productStats = {};
+                    companyPurchases.forEach(p => {
+                        if (!productStats[p.product]) {
+                            productStats[p.product] = 0;
+                        }
+                        productStats[p.product] += p.amount;
+                    });
+                    
+                    const productList = Object.entries(productStats)
+                        .map(([name, amount]) => ({ name, amount }))
+                        .sort((a, b) => b.amount - a.amount);
+                    
+                    if (productList.length > 0) {
+                        crossData.push({
+                            company: company.name,
+                            totalAmount: company.totalAmount,
+                            products: productList
+                        });
+                    }
+                });
+                
+                // 按公司总消费金额排序
+                crossData.sort((a, b) => b.totalAmount - a.totalAmount);
+                
+                // 计算统计数据
+                const totalCompanies = crossData.length;
+                const totalProducts = new Set(crossData.flatMap(c => c.products.map(p => p.name))).size;
+                const grandTotal = crossData.reduce((sum, c) => sum + c.totalAmount, 0);
+                
+                return `
+                    <h3>📊 公司-产品购买交叉数据分析</h3>
+                    <div class="qa-answer">
+                        <p>共有 <strong>${totalCompanies}</strong> 家公司购买了 <strong>${totalProducts}</strong> 种产品，总金额 <strong>${grandTotal.toFixed(2)}</strong> 万元</p>
+                        <div class="qa-data">
+                            <h4 style="color: #667eea; margin-bottom: 10px;">🏢 公司购买明细（按总消费排序）：</h4>
+                            ${crossData.map((item, i) => `
+                                <div style="margin-bottom: 20px; padding: 15px; background: ${i % 2 === 0 ? '#f8f9ff' : 'white'}; border-radius: 6px;">
+                                    <strong style="color: #333; font-size: 16px;">${i + 1}. ${item.company}</strong>
+                                    <span style="color: #764ba2; font-weight: bold; margin-left: 10px;">总计: ${item.totalAmount.toFixed(2)} 万元</span><br>
+                                    <div style="margin-top: 8px; margin-left: 20px; line-height: 1.8;">
+                                        ${item.products.map((p, j) => 
+                                            `<span style="color: #555;">
+                                                ${j > 0 ? '<br>' : ''}• <strong>${p.name}</strong>: <span style="color: #764ba2;">${p.amount.toFixed(2)} 万元</span>
+                                                <span style="color: #999;">(${(p.amount / item.totalAmount * 100).toFixed(1)}%)</span>
+                                            </span>`
+                                        ).join('')}
+                                    </div>
+                                </div>
+                            `).join('')}
+                            <div style="margin-top: 20px; padding: 15px; background: #e8f5e9; border-radius: 6px;">
+                                <strong style="color: #2e7d32;">📈 汇总统计：</strong><br>
+                                • 购买公司总数：${totalCompanies} 家<br>
+                                • 产品种类总数：${totalProducts} 种<br>
+                                • 总交易金额：${grandTotal.toFixed(2)} 万元<br>
+                                • 平均客单价：${(grandTotal / totalCompanies).toFixed(2)} 万元<br>
+                                • 人均购买产品数：${(crossData.reduce((sum, c) => sum + c.products.length, 0) / totalCompanies).toFixed(1)} 种
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 【新功能2】查询某个产品被哪些公司购买及各自花费
+            // 关键词：产品名 + 哪些公司 + 购买 + 花费/金额/多少
+            for (let product of products) {
+                if (q.includes(product.name.toLowerCase()) || question.includes(product.name)) {
+                    if ((q.includes('哪些公司') || q.includes('哪些企业')) && 
+                        (q.includes('购买') || q.includes('买了')) && 
+                        (q.includes('花费') || q.includes('金额') || q.includes('多少'))) {
+                        
+                        console.log('匹配到产品购买公司花费查询:', product.name);
+                        
+                        // 从购买数据中获取购买该产品的详细信息
+                        const productPurchases = purchaseData
+                            .filter(row => {
+                                const prodName = row['产品子类'] || row['产品名称'] || row['Product'] || row['产品'] || row['product'];
+                                return prodName === product.name;
+                            })
+                            .map(row => {
+                                const companyName = row['公司名'] || row['公司名称'] || row['Company'] || row['公司'] || row['企业名称'] || row['客户名称'];
+                                const activity = row['活动内容名称'] || row['活动名称'] || row['Activity'] || row['活动'] || row['activity'];
+                                const amount = parseFloat(row['合同订单金额/万元'] || row['合同订单金额'] || row['订单金额'] || row['金额'] || 0);
+                                return { companyName, activity, amount };
+                            })
+                            .filter(item => item.companyName);
+                        
+                        // 按公司分组统计
+                        const companyStats = {};
+                        productPurchases.forEach(p => {
+                            if (!companyStats[p.companyName]) {
+                                companyStats[p.companyName] = {
+                                    name: p.companyName,
+                                    totalAmount: 0,
+                                    count: 0,
+                                    activities: new Set(),
+                                    purchases: []
+                                };
+                            }
+                            companyStats[p.companyName].totalAmount += p.amount;
+                            companyStats[p.companyName].count += 1;
+                            companyStats[p.companyName].activities.add(p.activity);
+                            companyStats[p.companyName].purchases.push({ activity: p.activity, amount: p.amount });
+                        });
+                        
+                        const companyList = Object.values(companyStats).sort((a, b) => b.totalAmount - a.totalAmount);
+                        
+                        // 生成图表数据（前20名）
+                        const chartId = 'chart_product_companies_' + Date.now();
+                        setTimeout(() => {
+                            const top20 = companyList.slice(0, 20);
+                            if (top20.length > 0) {
+                                const chartData = top20.map(c => ({
+                                    label: c.name.length > 10 ? c.name.substring(0, 10) + '...' : c.name,
+                                    value: c.totalAmount
+                                }));
+                                generateBarChart(chartId, chartData, 
+                                    `${product.name} 购买公司花费排行（Top 20）`,
+                                    '公司',
+                                    '购买金额（万元）');
+                            }
+                        }, 100);
+                        
+                        return `
+                            <h3>💎 ${product.name} - 购买公司花费明细</h3>
+                            <div class="qa-answer">
+                                <p>共有 <strong>${companyList.length}</strong> 家公司购买了 <strong>${product.name}</strong></p>
+                                <div class="qa-data">
+                                    <h4 style="color: #667eea; margin-bottom: 10px;">🏢 购买公司花费排行：</h4>
+                                    ${companyList.map((c, i) => `
+                                        <div style="margin-bottom: 15px; padding: 12px; background: ${i % 2 === 0 ? '#f8f9ff' : 'white'}; border-radius: 6px;">
+                                            <strong style="color: #333; font-size: 15px;">${i + 1}. ${c.name}</strong>
+                                            <span style="color: #764ba2; font-weight: bold; margin-left: 10px;">${c.totalAmount.toFixed(2)} 万元</span><br>
+                                            <div style="margin-top: 5px; margin-left: 20px; color: #666; font-size: 14px;">
+                                                购买次数: ${c.count} 次 | 涉及活动: ${Array.from(c.activities).join('、')}<br>
+                                                ${c.purchases.map(p => `• ${p.activity}: ${p.amount.toFixed(2)} 万元`).join('<br>')}
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                    <div style="margin-top: 20px; padding: 15px; background: #e8f5e9; border-radius: 6px;">
+                                        <strong style="color: #2e7d32;">📊 ${product.name} 统计汇总：</strong><br>
+                                        • 总销售额：${product.totalAmount.toFixed(2)} 万元<br>
+                                        • 购买公司数：${companyList.length} 家<br>
+                                        • 总购买次数：${product.purchaseCount} 次<br>
+                                        • 平均单笔金额：${(product.totalAmount / product.purchaseCount).toFixed(2)} 万元<br>
+                                        • 最高单笔金额：${Math.max(...companyList.flatMap(c => c.purchases.map(p => p.amount))).toFixed(2)} 万元<br>
+                                        • 最低单笔金额：${Math.min(...companyList.flatMap(c => c.purchases.map(p => p.amount))).toFixed(2)} 万元
+                                    </div>
+                                    
+                                    <!-- 可视化图表 -->
+                                    ${companyList.length > 0 ? `
+                                    <div class="chart-container">
+                                        <div class="chart-title">📊 购买公司花费排行可视化（Top 20）</div>
+                                        <div class="chart-wrapper">
+                                            <canvas id="${chartId}"></canvas>
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
             // 新增查询1: 某个公司购买了哪些产品
             // 关键：问题中包含公司名 + (购买/买了) + 产品
             for (let company of companies) {
@@ -963,6 +2073,20 @@
                         
                         const productList = Object.values(productStats).sort((a, b) => b.totalAmount - a.totalAmount);
                         
+                        // 生成图表数据（前20名）- 使用饼图展示产品购买金额占比
+                        const chartId = 'chart_company_products_' + Date.now();
+                        setTimeout(() => {
+                            const top20 = productList.slice(0, 20);
+                            if (top20.length > 0) {
+                                const chartData = top20.map(p => ({
+                                    label: p.name.length > 20 ? p.name.substring(0, 20) + '...' : p.name,
+                                    value: parseFloat(p.totalAmount.toFixed(2))
+                                }));
+                                generatePieChart(chartId, chartData, 
+                                    `${company.name} 产品购买金额分布（Top 20）`);
+                            }
+                        }, 100);
+                        
                         return `
                             <h3>🏢 ${company.name} 购买的产品</h3>
                             <div class="qa-answer">
@@ -979,6 +2103,16 @@
                                     • 总消费金额：${company.totalAmount.toFixed(2)} 万元<br>
                                     • 参与活动数：${company.activities.length} 个<br>
                                     • 购买产品种类：${productList.length} 种
+                                    
+                                    <!-- 可视化图表 -->
+                                    ${productList.length > 0 ? `
+                                    <div class="chart-container" style="margin-top: 20px;">
+                                        <div class="chart-title">📊 产品购买金额占比分布（Top 20 饼图）</div>
+                                        <div class="chart-wrapper">
+                                            <canvas id="${chartId}"></canvas>
+                                        </div>
+                                    </div>
+                                    ` : ''}
                                 </div>
                             </div>
                         `;
@@ -1025,6 +2159,22 @@
                         
                         const companyList = Object.values(companyStats).sort((a, b) => b.totalAmount - a.totalAmount);
                         
+                        // 生成图表数据（前20名）
+                        const chartId = 'chart_product_companies_' + Date.now();
+                        setTimeout(() => {
+                            const top20 = companyList.slice(0, 20);
+                            if (top20.length > 0) {
+                                const chartData = top20.map(c => ({
+                                    label: c.name.length > 10 ? c.name.substring(0, 10) + '...' : c.name,
+                                    value: c.totalAmount
+                                }));
+                                generateBarChart(chartId, chartData, 
+                                    `${product.name} 购买公司花费排行（Top 20）`,
+                                    '公司',
+                                    '购买金额（万元）');
+                            }
+                        }, 100);
+                        
                         return `
                             <h3>💎 购买 ${product.name} 的公司</h3>
                             <div class="qa-answer">
@@ -1041,6 +2191,16 @@
                                     • 总销售额：${product.totalAmount.toFixed(2)} 万元<br>
                                     • 总购买次数：${product.purchaseCount} 次<br>
                                     • 购买企业数：${companyList.length} 家
+                                    
+                                    <!-- 可视化图表 -->
+                                    ${companyList.length > 0 ? `
+                                    <div class="chart-container" style="margin-top: 20px;">
+                                        <div class="chart-title">📊 购买公司金额排行可视化（Top 20）</div>
+                                        <div class="chart-wrapper">
+                                            <canvas id="${chartId}"></canvas>
+                                        </div>
+                                    </div>
+                                    ` : ''}
                                 </div>
                             </div>
                         `;
@@ -1084,6 +2244,22 @@
                         });
                         
                         const companyList = Object.values(companyStats).sort((a, b) => b.totalAmount - a.totalAmount);
+                        
+                        // 生成图表数据（前20名）
+                        const chartId = 'chart_product_companies_' + Date.now();
+                        setTimeout(() => {
+                            const top20 = companyList.slice(0, 20);
+                            if (top20.length > 0) {
+                                const chartData = top20.map(c => ({
+                                    label: c.name.length > 10 ? c.name.substring(0, 10) + '...' : c.name,
+                                    value: c.totalAmount
+                                }));
+                                generateBarChart(chartId, chartData, 
+                                    `${product.name} 购买公司花费排行（Top 20）`,
+                                    '公司',
+                                    '购买金额（万元）');
+                            }
+                        }, 100);
                         
                         return `
                             <h3>🎯 ${activity.name} 的购买公司</h3>
@@ -1146,6 +2322,20 @@
                         });
                         
                         const productList = Object.values(productStats).sort((a, b) => b.totalAmount - a.totalAmount);
+                        
+                        // 生成图表数据（前20名）- 使用饼图展示产品购买金额占比
+                        const chartId = 'chart_company_products_' + Date.now();
+                        setTimeout(() => {
+                            const top20 = productList.slice(0, 20);
+                            if (top20.length > 0) {
+                                const chartData = top20.map(p => ({
+                                    label: p.name.length > 20 ? p.name.substring(0, 20) + '...' : p.name,
+                                    value: parseFloat(p.totalAmount.toFixed(2))
+                                }));
+                                generatePieChart(chartId, chartData, 
+                                    `${company.name} 产品购买金额分布（Top 20）`);
+                            }
+                        }, 100);
                         
                         return `
                             <h3>🎯 ${activity.name} 的产品销售</h3>
